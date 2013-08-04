@@ -49,7 +49,10 @@ gedRecord = do
     y <- many $ gedLine leveln
     return $ GedRecord (x:y)
 
-data GedRecord = GedRecord [GedLine] deriving (Show)
+data GedRecord = GedRecord [GedLine]
+
+instance Show GedRecord where
+    show (GedRecord l) = "\nR:" ++ (concat (map show l))
 
 gedLine :: Parser Level -> Parser GedLine
 gedLine a = do
@@ -60,11 +63,21 @@ gedLine a = do
     eol
     return $ GedLine l x t v
     
-data GedLine   = GedLine Level (Maybe XrefId) Tag (Maybe LineValue) deriving (Show)
+data GedLine   = GedLine Level (Maybe XrefId) Tag (Maybe Value)
 type Level     = Int
-type XrefId    = String
+newtype XrefId = XrefId String
 type Tag       = String
-type LineValue = String
+type Value     = String
+
+instance Show GedLine where
+    show (GedLine l x t v) = "\n" ++ spc ++ "L: " ++ q x ++ p t ++ q v
+                             where
+                               spc = take (2*(l+1)) $ repeat ' ' 
+                               p x = show x ++ " "
+                               q x = maybe "" p x
+
+instance Show XrefId where
+    show (XrefId x) = "[" ++ x ++ "]"
 
 level0 :: Parser Level
 level0 = do
@@ -85,7 +98,7 @@ xrefid = do
     x <- many1 alphaNum
     char '@'
     ws
-    return x
+    return $ XrefId x
 
 tag :: Parser Tag
 tag = do
