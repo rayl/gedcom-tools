@@ -72,7 +72,7 @@ newtype XrefPtr = XrefPtr String
 type Value      = String
 
 instance Show GedLine where
-    show (GedLine l x t p v) = "\n" ++ spc ++ "L: " ++ q x ++ r t ++ q p ++ q v
+    show (GedLine l x t p v) = "\n  " ++ r t ++ spc ++ q x ++ q p ++ q v
                              where
                                spc = take (2*(l+1)) $ repeat ' ' 
                                r x = show x ++ " "
