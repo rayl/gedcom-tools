@@ -37,15 +37,25 @@ run p f = do
 
 
 
-gedFile :: Parser [GedLine]
+gedFile :: Parser [GedRecord]
 gedFile = do
-    x <- many gedLine
+    x <- many gedRecord
     eof
     return x
 
-gedLine :: Parser GedLine
-gedLine = do
-    l <- level
+gedRecord :: Parser GedRecord
+gedRecord = do
+    x <- gedLine True
+    xs <- many $ gedLine False
+    return $ GedRecord (x:xs)
+
+data GedRecord = GedRecord [GedLine] deriving (Show)
+
+gedLine :: Bool -> Parser GedLine
+gedLine a = do
+    l <- if a
+         then level0
+         else leveln
     x <- optionMaybe $ xrefid
     t <- tag
     v <- optionMaybe $ toEol
@@ -58,11 +68,18 @@ type XrefId    = String
 type Tag       = String
 type LineValue = String
 
-level :: Parser Level
-level = do
-    x <- many1 digit
+level0 :: Parser Level
+level0 = do
+    x <- string "0"
     ws
     return $ read x
+
+leveln :: Parser Level
+leveln = do
+    x <- oneOf "123456789"
+    y <- many digit
+    ws
+    return $ read $ x:y
 
 xrefid :: Parser XrefId
 xrefid = do
