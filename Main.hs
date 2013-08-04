@@ -67,7 +67,7 @@ gedLine a = do
 data GedLine    = GedLine Level (Maybe XrefId) Tag (Maybe XrefPtr) (Maybe Value)
 type Level      = Int
 newtype XrefId  = XrefId String
-type Tag        = String
+newtype Tag     = Tag String
 newtype XrefPtr = XrefPtr String
 type Value      = String
 
@@ -80,6 +80,9 @@ instance Show GedLine where
 
 instance Show XrefId where
     show (XrefId x) = "[" ++ x ++ "]"
+
+instance Show Tag where
+    show (Tag x) = "{" ++ x ++ "}"
 
 instance Show XrefPtr where
     show (XrefPtr x) = "<" ++ x ++ ">"
@@ -117,7 +120,7 @@ tag :: Parser Tag
 tag = do
     x <- many1 upper
     ws
-    return x
+    return $ Tag x
 
 eol :: Parser String
 eol = many1 $ oneOf "\r\n"
