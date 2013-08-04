@@ -59,25 +59,30 @@ gedLine a = do
     l <- a
     x <- optionMaybe $ xrefid
     t <- tag
+    p <- optionMaybe $ xrefptr
     v <- optionMaybe $ toEol
     eol
-    return $ GedLine l x t v
+    return $ GedLine l x t p v
     
-data GedLine   = GedLine Level (Maybe XrefId) Tag (Maybe Value)
-type Level     = Int
-newtype XrefId = XrefId String
-type Tag       = String
-type Value     = String
+data GedLine    = GedLine Level (Maybe XrefId) Tag (Maybe XrefPtr) (Maybe Value)
+type Level      = Int
+newtype XrefId  = XrefId String
+type Tag        = String
+newtype XrefPtr = XrefPtr String
+type Value      = String
 
 instance Show GedLine where
-    show (GedLine l x t v) = "\n" ++ spc ++ "L: " ++ q x ++ p t ++ q v
+    show (GedLine l x t p v) = "\n" ++ spc ++ "L: " ++ q x ++ r t ++ q p ++ q v
                              where
                                spc = take (2*(l+1)) $ repeat ' ' 
-                               p x = show x ++ " "
-                               q x = maybe "" p x
+                               r x = show x ++ " "
+                               q x = maybe "" r x
 
 instance Show XrefId where
     show (XrefId x) = "[" ++ x ++ "]"
+
+instance Show XrefPtr where
+    show (XrefPtr x) = "<" ++ x ++ ">"
 
 level0 :: Parser Level
 level0 = do
@@ -99,6 +104,14 @@ xrefid = do
     char '@'
     ws
     return $ XrefId x
+
+xrefptr :: Parser XrefPtr
+xrefptr = do
+    char '@' 
+    x <- many1 alphaNum
+    char '@'
+    ws
+    return $ XrefPtr x
 
 tag :: Parser Tag
 tag = do
