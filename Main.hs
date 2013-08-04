@@ -45,17 +45,15 @@ gedFile = do
 
 gedRecord :: Parser GedRecord
 gedRecord = do
-    x <- gedLine True
-    xs <- many $ gedLine False
-    return $ GedRecord (x:xs)
+    x <- gedLine level0
+    y <- many $ gedLine leveln
+    return $ GedRecord (x:y)
 
 data GedRecord = GedRecord [GedLine] deriving (Show)
 
-gedLine :: Bool -> Parser GedLine
+gedLine :: Parser Level -> Parser GedLine
 gedLine a = do
-    l <- if a
-         then level0
-         else leveln
+    l <- a
     x <- optionMaybe $ xrefid
     t <- tag
     v <- optionMaybe $ toEol
