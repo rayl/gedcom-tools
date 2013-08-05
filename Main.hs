@@ -16,8 +16,10 @@ module Main (main) where
 import Data.Char (chr)
 import Text.Parsec.Char (char,oneOf,string)
 import Text.Parsec.Combinator (eof,many1,optional,optionMaybe)
-import Text.Parsec.Prim (runParser,(<|>),many,try)
+import Text.Parsec.Pos (SourcePos,sourceLine)
+import Text.Parsec.Prim (runParser,(<|>),many,try,getPosition)
 import Text.Parsec.String (Parser,GenParser,parseFromFile)
+import Text.Printf (printf)
 
 
 infile = "rayl2.ged"
@@ -25,8 +27,8 @@ infile = "rayl2.ged"
 
 -- | Parse infile into many GedLine objects
 main :: IO ()
---main = run gedFile infile
-main = run2 infile
+main = run gedFile infile
+--main = run2 infile
 
 
 -- | Parse file f using Parser p, printing a parse error or returning
@@ -83,7 +85,7 @@ gedRecord = do
 -----------------------------------------------------------------------------
 -- Data structure to hold a single line read from a GEDCOM 5.5 file
 
-data     GedLine    = GedLine Level (Maybe XrefId) Tag (Maybe LineValue)
+data     GedLine    = GedLine SourcePos Level (Maybe XrefId) Tag (Maybe LineValue)
 type     Level      = Int
 newtype  XrefId     = XrefId String
 newtype  Tag        = Tag String
@@ -91,8 +93,9 @@ data     LineValue  = LvPtr Pointer | LvLineItem String
 newtype  Pointer    = Pointer String
 
 instance Show GedLine where
-    show (GedLine l x t v) = "\n  " ++ r t ++ spc ++ q x ++ q v
+    show (GedLine p l x t v) = "\n  " ++ ln ++ "> " ++ r t ++ spc ++ q x ++ q v
       where
+        ln = printf "%5d" $ sourceLine p
         spc = take (2*(l+1)) $ repeat ' '
         r x = show x ++ " "
         q x = maybe "" r x
@@ -117,12 +120,13 @@ instance Show Pointer where
 
 gedcom_line :: Parser Level -> Parser GedLine
 gedcom_line level = do
+    p <- getPosition
     l <- level
     x <- optional_xref_id
     t <- tag
     v <- optional_line_value
     terminator
-    return $ GedLine l x t v
+    return $ GedLine p l x t v
     
 alpha :: Parser Char
 alpha = oneOf $ concat [ ['A'..'Z'] , ['a'..'z'] , ['_']]
