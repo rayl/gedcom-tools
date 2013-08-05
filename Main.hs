@@ -14,9 +14,10 @@
 module Main (main) where
 
 import Data.Char (chr)
-import Control.Monad
-import Text.Parsec.Token
-import Text.ParserCombinators.Parsec hiding (digit)
+import Text.Parsec.Char (char,oneOf,string)
+import Text.Parsec.Combinator (eof,many1,optional,optionMaybe)
+import Text.Parsec.Prim (runParser,(<|>),many,try)
+import Text.Parsec.String (Parser,GenParser,parseFromFile)
 
 
 infile = "rayl2.ged"
@@ -24,7 +25,8 @@ infile = "rayl2.ged"
 
 -- | Parse infile into many GedLine objects
 main :: IO ()
-main = run gedFile infile
+--main = run gedFile infile
+main = run2 infile
 
 
 -- | Parse file f using Parser p, printing a parse error or returning
@@ -35,6 +37,20 @@ run p f = do
   case x of
     Left e -> putStr "Parse error at " >> print e
     Right r -> print r
+
+-- | Parse file f using Parser p, printing a parse error or returning
+-- the result of a successful parse
+run2 :: FilePath -> IO ()
+run2 f = do
+    ls <- parseFromFile gedLines f
+    case ls of
+        Left e -> putStr "Parse error at " >> print e
+        Right r -> do
+            putStrLn $ "Parsed " ++ (show . length) r ++ " lines"
+            let rs = runParser llGedcom (LLState 0) f r
+            case rs of
+                Left e -> putStr "Parse error at " >> print e
+                Right r -> print r
 
 
 
@@ -62,7 +78,6 @@ gedRecord = do
     x <- gedcom_line level0
     y <- many $ gedcom_line leveln
     return $ GedRecord (x:y)
-
 
 
 -----------------------------------------------------------------------------
@@ -130,6 +145,9 @@ digit = oneOf ['0'..'9']
 -- escape_text
 -- level
 
+level :: Parser Level
+level = level0 <|> leveln
+
 level0 :: Parser Level
 level0 = string "0" >> return 0
 
@@ -190,3 +208,38 @@ terminator = (cr <|> lf <|> (cr >> lf) <|> (lf >> cr)) >> return ()
 
 xref_id :: Parser XrefId
 xref_id = _pointer >>= return . XrefId
+
+
+-----------------------------------------------------------------------------
+-- Chapter 2, Lineage Linked Grammar
+
+-- parse a GEDCOM file into a list of GedLine objects
+gedLines :: Parser [GedLine]
+gedLines = do
+    x <- many $ gedcom_line level
+    eof
+    return x
+    
+type LLParser a = GenParser GedLine LLState a
+
+data LLState = LLState Int  -- current line level
+
+llLine :: String -> LLParser ()
+llLine s = undefined
+
+llGedcom :: LLParser ()
+llGedcom = do
+    llHeader
+    optional $ llSubmissionRecord
+    many $ llRecord
+    llLine "TRLR"
+    return ()
+    
+llHeader :: LLParser ()
+llHeader = do
+    llLine "HEAD"
+    llLine "SOUR"
+    return ()
+
+llSubmissionRecord = undefined
+llRecord = undefined
