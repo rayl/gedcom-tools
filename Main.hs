@@ -481,53 +481,45 @@ sEventDetail = do
     s0m sNoteStructure
 
 sFamilyEventStructure =
-    when (rANUL <|> rCENS <|> rDIV  <|> rDIVF <|>
-          rENGA <|> rMARR <|> rMARB <|> rMARC <|>
-          rMARL <|> rMARS <|> rEVEN) $
-      do
-          s01 sEventDetail
+    when (r11 rList) $ do
+        s01 sEventDetail
+          where
+            rList = rANUL <|> rCENS <|> rDIV  <|> rDIVF <|>
+                    rENGA <|> rMARR <|> rMARB <|> rMARC <|>
+                    rMARL <|> rMARS <|>
+                    rEVEN
 
 sIndividualAttributeStructure =
-    when (rCAST <|> rDSCR <|> rEDUC <|> rIDNO <|>
-          rNATI <|> rNCHI <|> rNMR  <|> rOCCU <|>
-          rPROP <|> rRELI <|> rRESI <|> rSSN  <|>
-          rTITL) $
-      do
-          s01 sEventDetail
-
+    when (r11 rList) $ do
+        s01 sEventDetail
+          where
+            rList = rCAST <|> rDSCR <|> rEDUC <|> rIDNO <|>
+                    rNATI <|> rNCHI <|> rNMR  <|> rOCCU <|>
+                    rPROP <|> rRELI <|> rRESI <|> rSSN  <|>
+                    rTITL
+            
 sIndividualEventStructure = do
-    c1 <|> c2 <|> c3 <|> c4 <|> c5 <|> c6 <|> c7 <|> c8 <|> c9
+    c1 <|> c2 <|> c3
       where
         c1 = when (r11 $ rBIRT <|> rCHR) $ do
             s01 sEventDetail
             r01 rFAMC
 
-        c2 = when (r11 $ rDEAT <|> rBURI <|> rCREM) $ do
-            s01 sEventDetail
-
-        c3 = when (r11 $ rADOP) $ do
+        c2 = when (r11 $ rADOP) $ do
             s01 sEventDetail
             when (r01 rFAMC) $ do
                 r01 rADOP
     
-        c4 = when (r11 $ rBAPM <|> rBARM <|> rBASM <|> rBLES) $ do
+        c3 = when (r11 rList) $ do
             s01 sEventDetail
-    
-        c5 = when (r11 $ rCHRA <|> rCONF <|> rFCOM <|> rORDN) $ do
-            s01 sEventDetail
-    
-        c6 = when (r11 $ rNATU <|> rEMIG <|> rIMMI) $ do
-            s01 sEventDetail
-    
-        c7 = when (r11 $ rCENS <|> rPROB <|> rWILL) $ do
-            s01 sEventDetail
-    
-        c8 = when (r11 $ rGRAD <|> rRETI) $ do
-            s01 sEventDetail
-    
-        c9 = when (r11 $ rEVEN) $ do
-            s01 sEventDetail
-
+              where
+                rList = rDEAT <|> rBURI <|> rCREM <|>
+                        rBAPM <|> rBARM <|> rBASM <|> rBLES <|>
+                        rCHRA <|> rCONF <|> rFCOM <|> rORDN <|>
+                        rNATU <|> rEMIG <|> rIMMI <|>
+                        rCENS <|> rPROB <|> rWILL <|>
+                        rGRAD <|> rRETI <|>
+                        rEVEN
 
 sLdsIndividualOrdinance = xxx
 
