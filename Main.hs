@@ -387,6 +387,7 @@ sNoteRecord =
 sRepositoryRecord =
     when (r11 rREPO) $ do
         r01 rNAME
+        r01 xWWW
         s01 sAddressStructure
         s0m sNoteStructure
         loop (r01 rREFN) $ do
@@ -749,3 +750,4 @@ rWILL = chk "WILL"
 xMAP  = chk "MAP"
 xLATI = chk "LATI"
 xLONG = chk "LONG"
+xWWW  = chk "WWW"
