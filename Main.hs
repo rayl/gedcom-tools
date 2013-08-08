@@ -61,7 +61,6 @@ run2 f = do
 
 
 
------------------------------------------------------------------------------
 -- File and Record data structure
 --   Just a quick hack for pretty printing at the moment.
 
@@ -87,7 +86,6 @@ gedRecord = do
     return $ GedRecord (x:y)
 
 
------------------------------------------------------------------------------
 -- Data structure to hold a single line read from a GEDCOM 5.5 file
 
 data     GedLine    = GedLine SourcePos Level (Maybe XrefId) Tag (Maybe LineValue)
@@ -118,6 +116,72 @@ instance Show LineValue where
 instance Show Pointer where
     show (Pointer x) = "<" ++ x ++ ">"
 
+-- parse a GEDCOM file into a list of GedLine objects
+gedLines :: Parser [GedLine]
+gedLines = do
+    x <- many $ gedcom_line level
+    eof
+    return x
+    
+type LLParser a = GenParser GedLine Level a
+type Rec = LLParser Bool
+
+-- record repeaters
+r01,r03,r11,r0m,r1m :: Rec -> Rec
+r01 b = option False b
+r03 b = r01 b >> r01 b >> r01 b
+r11 b = b
+r0m b = many  b >> return True
+r1m b = many1 b >> return True
+
+
+-- structure repeaters
+s01,s11,s0m,s1m :: Rec -> Rec
+s01 = r01
+s11 = r11
+s0m = r0m
+s1m = r1m
+
+
+
+-- execute child at next level when parent record exists
+when :: Rec -> Rec -> Rec
+when parent child = do
+    x <- parent
+    if x
+      then do
+        modifyState $ \x -> x + 1
+        y <- child
+        modifyState $ \x -> x - 1
+        return True
+      else return False
+
+-- execute child at next level while parent records exist
+loop :: Rec -> Rec -> Rec
+loop parent child = whileM_ (when parent child) (return True) >> return True
+
+    
+chk :: String -> Rec
+chk t = do
+    n <- getState
+    let pos (GedLine x _ _ _ _) = x
+        test (GedLine _ l _ (Tag a) _) =
+            if l == n && a == t
+            then Just True
+            else Nothing
+    token show pos test
+
+
+
+xxx = chk "FIXME"
+
+
+
+
+
+
+-----------------------------------------------------------------------------
+-- Grammar Syntax, page 11
 
 -- Parsers derived from GEDCOM 5.5 grammar syntax, except escape
 -- sequences. also, delim handlnig is slightly rearranged in
@@ -219,69 +283,8 @@ xref_id :: Parser XrefId
 xref_id = _pointer >>= return . XrefId
 
 
+
 -----------------------------------------------------------------------------
--- Chapter 2, Lineage Linked Grammar
-
--- parse a GEDCOM file into a list of GedLine objects
-gedLines :: Parser [GedLine]
-gedLines = do
-    x <- many $ gedcom_line level
-    eof
-    return x
-    
-type LLParser a = GenParser GedLine Level a
-type Rec = LLParser Bool
-
--- record repeaters
-r01,r03,r11,r0m,r1m :: Rec -> Rec
-r01 b = option False b
-r03 b = r01 b >> r01 b >> r01 b
-r11 b = b
-r0m b = many  b >> return True
-r1m b = many1 b >> return True
-
-
--- structure repeaters
-s01,s11,s0m,s1m :: Rec -> Rec
-s01 = r01
-s11 = r11
-s0m = r0m
-s1m = r1m
-
-
-
--- execute child at next level when parent record exists
-when :: Rec -> Rec -> Rec
-when parent child = do
-    x <- parent
-    if x
-      then do
-        modifyState $ \x -> x + 1
-        y <- child
-        modifyState $ \x -> x - 1
-        return True
-      else return False
-
--- execute child at next level while parent records exist
-loop :: Rec -> Rec -> Rec
-loop parent child = whileM_ (when parent child) (return True) >> return True
-
-    
-chk :: String -> Rec
-chk t = do
-    n <- getState
-    let pos (GedLine x _ _ _ _) = x
-        test (GedLine _ l _ (Tag a) _) =
-            if l == n && a == t
-            then Just True
-            else Nothing
-    token show pos test
-
-
-
-xxx = chk "FIXME"
-
-
 -- Record Structures, page 23
 
 sLineageLinkedGedcom = do
@@ -442,6 +445,7 @@ sSubmitterRecord =
 
 
 
+-----------------------------------------------------------------------------
 -- substructures, page 29
 
 sAddressStructure = do
@@ -600,12 +604,14 @@ sSpouseToFamilyLink =
         
 
 
+-----------------------------------------------------------------------------
 -- primitive elements, page 37
 
 
 
 
 
+-----------------------------------------------------------------------------
 -- record types, page 69
 
 rABBR = chk "ABBR"
