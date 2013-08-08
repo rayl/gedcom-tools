@@ -231,16 +231,12 @@ gedLines = do
 type LLParser a = GenParser GedLine Level a
 type Rec = LLParser Bool
 
-
-req :: String -> Rec
-req = chk
-
-opt :: String -> Rec
-opt t = option False $ chk t
-
-optm = opt
-
-chk :: String -> Rec
+-- record repeaters
+r01,r11,r0m,r1m,chk :: String -> Rec
+r01 t = option False (chk t)
+r11   = chk
+r0m   = r01
+r1m   = r11
 chk t = do
     n <- getState
     let pos (GedLine x _ _ _ _) = x
@@ -251,101 +247,101 @@ chk t = do
     token show pos test
 
 
+-- structure repeaters
+s01,s11,s0m,s1m :: Rec -> Rec
+s01 b = option False b
+s11   = id
+s0m b = many  b >> return True
+s1m b = many1 b >> return True
+
+
+
+-- execute child at next level when parent record exists
 when :: Rec -> Rec -> Rec
-when t b = do
-    x <- t
+when parent child = do
+    x <- parent
     if x
       then do
         modifyState $ \x -> x + 1
-        y <- b
+        y <- child
         modifyState $ \x -> x - 1
         return y
       else return False
 
-req1 :: Rec -> Rec
-req1 = id
-
-reqM :: Rec -> Rec
-reqM b = many1 b >> return True
-
-opt1 :: Rec -> Rec
-opt1 b = option False b
-
-optM :: Rec -> Rec
-optM b = many b >> return True
+-- Record Structures, page 23
 
 llGedcom :: Rec
 llGedcom = do
-    req1 llHeader
-    opt1 llSubmissionRecord
-    reqM llRecord
-    req "TRLR"
+    s11 llHeader
+    s01 llSubmissionRecord
+    s1m llRecord
+    r11 "TRLR"
 
 llHeader :: Rec
 llHeader =
-    when (req "HEAD") $ do
-        when (req "SOUR") $ do
-            opt "VERS"
-            opt "NAME"
-            when (opt "CORP") $ do
-                opt1 llAddressStructure
-            when (opt "DATA") $ do
-                opt "DATE"
-                opt "COPR"
-        opt "DEST"
-        when (opt "DATE") $ do
-            opt "TIME"
-        req "SUBM"
-        opt "SUBN"
-        opt "FILE"
-        opt "COPR"
-        when (req "GEDC") $ do
-            req "VERS"
-            req "FORM"
-        when (req "CHAR") $ do
-            opt "VERS"
-        opt "LANG"
-        when (opt "PLAC") $ do
-            req "FORM"
-        when (opt "NOTE") $ do
-            opt "CONT" -- FIXME        
+    when (r11 "HEAD") $ do
+        when (r11 "SOUR") $ do
+            r01 "VERS"
+            r01 "NAME"
+            when (r01 "CORP") $ do
+                s01 llAddressStructure
+            when (r01 "DATA") $ do
+                r01 "DATE"
+                r01 "COPR"
+        r01 "DEST"
+        when (r01 "DATE") $ do
+            r01 "TIME"
+        r11 "SUBM"
+        r01 "SUBN"
+        r01 "FILE"
+        r01 "COPR"
+        when (r11 "GEDC") $ do
+            r11 "VERS"
+            r11 "FORM"
+        when (r11 "CHAR") $ do
+            r01 "VERS"
+        r01 "LANG"
+        when (r01 "PLAC") $ do
+            r11 "FORM"
+        when (r01 "NOTE") $ do
+            r01 "CONT" -- FIXME        
 
 llRecord :: Rec
-llRecord = --req1 llFamRecord <|>
-           req1 llIndividualRecord <|>
-           --reqM llMultimediaRecord <|>
-           --req1 llNoteRecord <|>
-           --req1 llRepositoryRecord <|>
-           --req1 llSourceRecord <|>
-           req1 llSubmitterRecord
+llRecord = --s11 llFamRecord <|>
+           s11 llIndividualRecord <|>
+           --s1m llMultimediaRecord <|>
+           --s11 llNoteRecord <|>
+           --s11 llRepositoryRecord <|>
+           --s11 llSourceRecord <|>
+           s11 llSubmitterRecord
 
 --llFamRecord = return True
 
 llIndividualRecord :: Rec
 llIndividualRecord =
-    when (req "INDI") $ do
-        opt "RESN"
-        optM llPersonalNameStructure
-        opt "SEX"
-        optM llIndividualEventStructure
-        optM llIndividualAttributeStructure
-        optM llLdsIndividualOrdinance
-        optM llChildToFamilyLink
-        optM llSpouseToFamilyLink
-        optm "SUBM"
-        optM llAssociationStructure
-        optm "ALIA"
-        optm "ANCI"
-        optm "DESI"
-        optM llSourceCitation
-        optM llMultimediaLink
-        optM llNoteStructure
-        opt "RFN"
-        opt "AFN"
-        when (opt "REFN") $ do -- fixme
-            opt "TYPE"
-        opt "RIN"
-        opt1 llChangeDate
+    when (r11 "INDI") $ do
+        r01 "RESN"
+        s0m llPersonalNameStructure
+        r01 "SEX"
+        s0m llIndividualEventStructure
+        s0m llIndividualAttributeStructure
+        s0m llLdsIndividualOrdinance
+        s0m llChildToFamilyLink
+        s0m llSpouseToFamilyLink
+        r0m "SUBM"
+        s0m llAssociationStructure
+        r0m "ALIA"
+        r0m "ANCI"
+        r0m "DESI"
+        s0m llSourceCitation
+        s0m llMultimediaLink
+        s0m llNoteStructure
+        r01 "RFN"
+        r01 "AFN"
+        when (r01 "REFN") $ do -- fixme
+            r01 "TYPE"
+        r01 "RIN"
+        s01 llChangeDate
 
 --llMultimediaRecord = return True
 --llNoteRecord = return True
@@ -354,59 +350,60 @@ llIndividualRecord =
 
 llSubmissionRecord :: Rec
 llSubmissionRecord =
-    when (req "SUBN") $ do  -- fixme, xref
-        opt "SUBM"
-        opt "FAMF"
-        opt "TEMP"
-        opt "ANCE"
-        opt "DESC"
-        opt "ORDI"
-        opt "RIN"
+    when (r11 "SUBN") $ do  -- fixme, xref
+        r01 "SUBM"
+        r01 "FAMF"
+        r01 "TEMP"
+        r01 "ANCE"
+        r01 "DESC"
+        r01 "ORDI"
+        r01 "RIN"
 
 llSubmitterRecord :: Rec
 llSubmitterRecord =
-    when (req "SUBM") $ do -- fixme xref
-        req "NAME"
-        opt1 llAddressStructure
-        optM llMultimediaLink
-        opt "LANG"
-        opt "RFN"
-        opt "RIN"
-        opt1 llChangeDate
+    when (r11 "SUBM") $ do -- fixme xref
+        r11 "NAME"
+        s01 llAddressStructure
+        s0m llMultimediaLink
+        r01 "LANG"
+        r01 "RFN"
+        r01 "RIN"
+        s01 llChangeDate
 
 
 
 
 
+-- substructures, page 29
 
-xxx = req "FIXME"
+xxx = r11 "FIXME"
 
 llAddressStructure :: Rec
 llAddressStructure = do
-    when (req "ADDR") $ do -- fixme
-        opt "CONT"
-        opt "ADR1"
-        opt "ADR2"
-        opt "CITY"
-        opt "STAE"
-        opt "POST"
-        opt "CTRY"
-    opt "PHON"
+    when (r11 "ADDR") $ do -- fixme
+        r01 "CONT"
+        r01 "ADR1"
+        r01 "ADR2"
+        r01 "CITY"
+        r01 "STAE"
+        r01 "POST"
+        r01 "CTRY"
+    r01 "PHON"
 
 llAssociationStructure = xxx
 
 llChangeDate :: Rec
 llChangeDate =
-    when (req "CHAN") $ do
-        when (req "DATE") $ do
-            opt "TIME"
-        optM llNoteStructure
+    when (r11 "CHAN") $ do
+        when (r11 "DATE") $ do
+            r01 "TIME"
+        s0m llNoteStructure
 
 llChildToFamilyLink :: Rec
 llChildToFamilyLink =
-    when (req "FAMC") $ do
-        optm "PEDI"
-        optM llNoteStructure
+    when (r11 "FAMC") $ do
+        r0m "PEDI"
+        s0m llNoteStructure
 
 llIndividualAttributeStructure = xxx
 
@@ -421,20 +418,23 @@ llNoteStructure = xxx
 
 llPersonalNameStructure :: Rec
 llPersonalNameStructure =
-    when (req "NAME") $ do
-        opt "NPFX"
-        opt "GIVN"
-        opt "NICK"
-        opt "SPFX"
-        opt "SURN"
-        opt "NSFX"
-        optM llSourceCitation
-        optM llNoteStructure
+    when (r11 "NAME") $ do
+        r01 "NPFX"
+        r01 "GIVN"
+        r01 "NICK"
+        r01 "SPFX"
+        r01 "SURN"
+        r01 "NSFX"
+        s0m llSourceCitation
+        s0m llNoteStructure
         
 llSourceCitation = xxx
 
 llSpouseToFamilyLink :: Rec
 llSpouseToFamilyLink =
-    when (req "FAMS") $ do
-        optM llNoteStructure
+    when (r11 "FAMS") $ do
+        s0m llNoteStructure
         
+
+
+-- primitive elements, page 37
