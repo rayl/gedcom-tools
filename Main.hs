@@ -14,10 +14,11 @@
 module Main (main) where
 
 import Data.Char (chr)
+import System.Environment (getArgs)
 import Text.Parsec.Char (char,oneOf,string)
-import Text.Parsec.Combinator (eof,many1,optional,optionMaybe)
+import Text.Parsec.Combinator (eof,many1,option,optional,optionMaybe)
 import Text.Parsec.Pos (SourcePos,sourceLine)
-import Text.Parsec.Prim (runParser,(<|>),many,try,getPosition)
+import Text.Parsec.Prim (Parsec,runParser,(<|>),many,try,getPosition,token,getState,modifyState)
 import Text.Parsec.String (Parser,GenParser,parseFromFile)
 import Text.Printf (printf)
 
@@ -27,8 +28,11 @@ infile = "rayl2.ged"
 
 -- | Parse infile into many GedLine objects
 main :: IO ()
-main = run gedFile infile
---main = run2 infile
+main = do
+    args <- getArgs
+    if length args > 0
+        then run gedFile infile
+        else run2 infile
 
 
 -- | Parse file f using Parser p, printing a parse error or returning
@@ -49,7 +53,7 @@ run2 f = do
         Left e -> putStr "Parse error at " >> print e
         Right r -> do
             putStrLn $ "Parsed " ++ (show . length) r ++ " lines"
-            let rs = runParser llGedcom (LLState 0) f r
+            let rs = runParser llGedcom 0 f r
             case rs of
                 Left e -> putStr "Parse error at " >> print e
                 Right r -> print r
@@ -224,26 +228,95 @@ gedLines = do
     eof
     return x
     
-type LLParser a = GenParser GedLine LLState a
+type LLParser a = GenParser GedLine Level a
+type Rec = LLParser Bool
 
-data LLState = LLState Int  -- current line level
 
-llLine :: String -> LLParser ()
-llLine s = undefined
+req :: String -> Rec
+req = chk
 
-llGedcom :: LLParser ()
+opt :: String -> Rec
+opt t = option False $ chk t
+
+chk :: String -> Rec
+chk t = do
+    n <- getState
+    let pos (GedLine x _ _ _ _) = x
+        test (GedLine _ l _ (Tag a) _) =
+            if l == n && a == t
+            then Just True
+            else Nothing
+    token show pos test
+
+
+when :: Rec -> Rec -> Rec
+when t b = do
+    x <- t
+    if x
+      then do
+        modifyState $ \x -> x + 1
+        y <- b
+        modifyState $ \x -> x - 1
+        return y
+      else return False
+
+req1 :: Rec -> Rec
+req1 = id
+
+reqM :: Rec -> Rec
+reqM b = many1 b >> return True
+
+opt1 :: Rec -> Rec
+opt1 b = option False b
+
+optM :: Rec -> Rec
+optM b = many b >> return True
+
+llGedcom :: Rec
 llGedcom = do
-    llHeader
-    optional $ llSubmissionRecord
-    many $ llRecord
-    llLine "TRLR"
-    return ()
-    
-llHeader :: LLParser ()
-llHeader = do
-    llLine "HEAD"
-    llLine "SOUR"
-    return ()
+    req1 llHeader
+    --opt1 llSubmissionRecord
+    --reqM llRecord
+    req1 llTrlr
 
-llSubmissionRecord = undefined
-llRecord = undefined
+llHeader :: Rec
+llHeader = do
+    when (req "HEAD") $ do
+        when (req "SOUR") $ do
+            opt "VERS"
+            opt "NAME"
+            when (opt "CORP") $ do
+                opt1 llAddressStructure
+            when (opt "DATA") $ do
+                opt "DATE"
+                opt "COPR"
+        opt "DEST"
+        when (opt "DATE") $ do
+            opt "TIME"
+        req "SUBM"
+        opt "SUBN"
+        opt "FILE"
+        opt "COPR"
+        when (req "GEDC") $ do
+            req "VERS"
+            req "FORM"
+        when (req "CHAR") $ do
+            opt "VERS"
+        opt "LANG"
+        when (opt "PLAC") $ do
+            req "FORM"
+        when (opt "NOTE") $ do
+            opt "CONT" -- FIXME        
+        return True
+
+llSubmissionRecord :: Rec
+llSubmissionRecord = return True
+
+llRecord :: Rec
+llRecord = return True
+
+llTrlr :: Rec
+llTrlr = req "TRLR"
+
+llAddressStructure :: Rec
+llAddressStructure = return True
