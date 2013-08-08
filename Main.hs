@@ -474,6 +474,9 @@ sPersonalNameStructure =
 
 sPlaceStructure =
     when (r11 rPLAC) $ do
+        when (r01 xMAP) $ do
+            r01 xLATI
+            r01 xLONG
         r01 rFORM
         s0m sSourceCitation
         s0m sNoteStructure
@@ -625,3 +628,8 @@ rTYPE = chk "TYPE"
 rVERS = chk "VERS"
 rWIFE = chk "WIFE"
 rWILL = chk "WILL"
+
+-- gramps extensions
+xMAP  = chk "MAP"
+xLATI = chk "LATI"
+xLONG = chk "LONG"
