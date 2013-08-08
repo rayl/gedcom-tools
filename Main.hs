@@ -232,28 +232,20 @@ type LLParser a = GenParser GedLine Level a
 type Rec = LLParser Bool
 
 -- record repeaters
-r01,r03,r11,r0m,r1m,chk :: String -> Rec
-r01 t = option False (chk t)
-r03   = r01
-r11   = chk
-r0m   = r01 -- must repeat body for each parent
-r1m   = r11
-chk t = do
-    n <- getState
-    let pos (GedLine x _ _ _ _) = x
-        test (GedLine _ l _ (Tag a) _) =
-            if l == n && a == t
-            then Just True
-            else Nothing
-    token show pos test
+r01,r03,r11,r0m,r1m :: Rec -> Rec
+r01 b = option False b
+r03 b = r01 b >> r01 b >> r01 b
+r11 b = b
+r0m b = many  b >> return True
+r1m b = many1 b >> return True
 
 
 -- structure repeaters
 s01,s11,s0m,s1m :: Rec -> Rec
-s01 b = option False b
-s11   = id
-s0m b = many  b >> return True
-s1m b = many1 b >> return True
+s01 = r01
+s11 = r11
+s0m = r0m
+s1m = r1m
 
 
 
@@ -269,9 +261,19 @@ when parent child = do
         return y
       else return False
 
+chk :: String -> Rec
+chk t = do
+    n <- getState
+    let pos (GedLine x _ _ _ _) = x
+        test (GedLine _ l _ (Tag a) _) =
+            if l == n && a == t
+            then Just True
+            else Nothing
+    token show pos test
 
 
-xxx = r11 "FIXME"
+
+xxx = r11 rWILL
 
 
 -- Record Structures, page 23
@@ -280,35 +282,35 @@ sLineageLinkedGedcom = do
     s11 sHeader
     s01 sSubmissionRecord
     s1m sRecord
-    r11 "TRLR"
+    r11 rTRLR
 
 sHeader =
-    when (r11 "HEAD") $ do
-        when (r11 "SOUR") $ do
-            r01 "VERS"
-            r01 "NAME"
-            when (r01 "CORP") $ do
+    when (r11 rHEAD) $ do
+        when (r11 rSOUR) $ do
+            r01 rVERS
+            r01 rNAME
+            when (r01 rCORP) $ do
                 s01 sAddressStructure
-            when (r01 "DATA") $ do
-                r01 "DATE"
-                r01 "COPR"
-        r01 "DEST"
-        when (r01 "DATE") $ do
-            r01 "TIME"
-        r11 "SUBM"
-        r01 "SUBN"
-        r01 "FILE"
-        r01 "COPR"
-        when (r11 "GEDC") $ do
-            r11 "VERS"
-            r11 "FORM"
-        when (r11 "CHAR") $ do
-            r01 "VERS"
-        r01 "LANG"
-        when (r01 "PLAC") $ do
-            r11 "FORM"
-        when (r01 "NOTE") $ do
-            r0m ("CONT" ++ "CONC") -- fixme
+            when (r01 rDATA) $ do
+                r01 rDATE
+                r01 rCOPR
+        r01 rDEST
+        when (r01 rDATE) $ do
+            r01 rTIME
+        r11 rSUBM
+        r01 rSUBN
+        r01 rFILE
+        r01 rCOPR
+        when (r11 rGEDC) $ do
+            r11 rVERS
+            r11 rFORM
+        when (r11 rCHAR) $ do
+            r01 rVERS
+        r01 rLANG
+        when (r01 rPLAC) $ do
+            r11 rFORM
+        when (r01 rNOTE) $ do
+            r0m (rCONT <|> rCONC) -- fixme
 
 sRecord = s11 sFamRecord <|>
           s11 sIndividualRecord <|>
@@ -321,28 +323,28 @@ sRecord = s11 sFamRecord <|>
 sFamRecord = xxx
 
 sIndividualRecord =
-    when (r11 "INDI") $ do
-        r01 "RESN"
+    when (r11 rINDI) $ do
+        r01 rRESN
         s0m sPersonalNameStructure
-        r01 "SEX"
+        r01 rSEX
         s0m sIndividualEventStructure
         s0m sIndividualAttributeStructure
         s0m sLdsIndividualOrdinance
         s0m sChildToFamilyLink
         s0m sSpouseToFamilyLink
-        r0m "SUBM"
+        r0m rSUBM
         s0m sAssociationStructure
-        r0m "ALIA"
-        r0m "ANCI"
-        r0m "DESI"
+        r0m rALIA
+        r0m rANCI
+        r0m rDESI
         s0m sSourceCitation
         s0m sMultimediaLink
         s0m sNoteStructure
-        r01 "RFN"
-        r01 "AFN"
-        when (r0m "REFN") $ do
-            r01 "TYPE"
-        r01 "RIN"
+        r01 rRFN
+        r01 rAFN
+        when (r0m rREFN) $ do -- fixme, loop foreach parent
+            r01 rTYPE
+        r01 rRIN
         s01 sChangeDate
 
 sMultimediaRecord = xxx
@@ -354,23 +356,23 @@ sRepositoryRecord = xxx
 sSourceRecord = xxx
 
 sSubmissionRecord =
-    when (r11 "SUBN") $ do
-        r01 "SUBM"
-        r01 "FAMF"
-        r01 "TEMP"
-        r01 "ANCE"
-        r01 "DESC"
-        r01 "ORDI"
-        r01 "RIN"
-
+    when (r11 rSUBN) $ do
+        r01 rSUBM
+        r01 rFAMF
+        r01 rTEMP
+        r01 rANCE
+        r01 rDESC
+        r01 rORDI
+        r01 rRIN
+        
 sSubmitterRecord =
-    when (r11 "SUBM") $ do
-        r11 "NAME"
+    when (r11 rSUBM) $ do
+        r11 rNAME
         s01 sAddressStructure
         s0m sMultimediaLink
-        r03 "LANG"
-        r01 "RFN"
-        r01 "RIN"
+        r03 rLANG
+        r01 rRFN
+        r01 rRIN
         s01 sChangeDate
 
 
@@ -378,27 +380,27 @@ sSubmitterRecord =
 -- substructures, page 29
 
 sAddressStructure = do
-    when (r01 "ADDR") $ do
-        r0m "CONT"
-        r01 "ADR1"
-        r01 "ADR2"
-        r01 "CITY"
-        r01 "STAE"
-        r01 "POST"
-        r01 "CTRY"
-    r03 "PHON"
+    when (r01 rADDR) $ do
+        r0m rCONT
+        r01 rADR1
+        r01 rADR2
+        r01 rCITY
+        r01 rSTAE
+        r01 rPOST
+        r01 rCTRY
+    r03 rPHON
 
 sAssociationStructure = xxx
 
 sChangeDate =
-    when (r11 "CHAN") $ do
-        when (r11 "DATE") $ do
-            r01 "TIME"
+    when (r11 rCHAN) $ do
+        when (r11 rDATE) $ do
+            r01 rTIME
         s0m sNoteStructure
 
 sChildToFamilyLink =
-    when (r11 "FAMC") $ do
-        r0m "PEDI"
+    when (r11 rFAMC) $ do
+        r0m rPEDI
         s0m sNoteStructure
 
 sEventDetail = xxx
@@ -418,13 +420,13 @@ sMultimediaLink = xxx
 sNoteStructure = xxx
 
 sPersonalNameStructure =
-    when (r11 "NAME") $ do
-        r01 "NPFX"
-        r01 "GIVN"
-        r01 "NICK"
-        r01 "SPFX"
-        r01 "SURN"
-        r01 "NSFX"
+    when (r11 rNAME) $ do
+        r01 rNPFX
+        r01 rGIVN
+        r01 rNICK
+        r01 rSPFX
+        r01 rSURN
+        r01 rNSFX
         s0m sSourceCitation
         s0m sNoteStructure
 
@@ -435,7 +437,7 @@ sSourceCitation = xxx
 sSourceRepositoryCitation = xxx
 
 sSpouseToFamilyLink =
-    when (r11 "FAMS") $ do
+    when (r11 rFAMS) $ do
         s0m sNoteStructure
         
 
