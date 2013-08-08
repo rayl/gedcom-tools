@@ -53,7 +53,7 @@ run2 f = do
         Left e -> putStr "Parse error at " >> print e
         Right r -> do
             putStrLn $ "Parsed " ++ (show . length) r ++ " lines"
-            let rs = runParser llGedcom 0 f r
+            let rs = runParser sLineageLinkedGedcom 0 f r
             case rs of
                 Left e -> putStr "Parse error at " >> print e
                 Right r -> print r
@@ -232,10 +232,11 @@ type LLParser a = GenParser GedLine Level a
 type Rec = LLParser Bool
 
 -- record repeaters
-r01,r11,r0m,r1m,chk :: String -> Rec
+r01,r03,r11,r0m,r1m,chk :: String -> Rec
 r01 t = option False (chk t)
+r03   = r01
 r11   = chk
-r0m   = r01
+r0m   = r01 -- must repeat body for each parent
 r1m   = r11
 chk t = do
     n <- getState
@@ -268,23 +269,26 @@ when parent child = do
         return y
       else return False
 
+
+
+xxx = r11 "FIXME"
+
+
 -- Record Structures, page 23
 
-llGedcom :: Rec
-llGedcom = do
-    s11 llHeader
-    s01 llSubmissionRecord
-    s1m llRecord
+sLineageLinkedGedcom = do
+    s11 sHeader
+    s01 sSubmissionRecord
+    s1m sRecord
     r11 "TRLR"
 
-llHeader :: Rec
-llHeader =
+sHeader =
     when (r11 "HEAD") $ do
         when (r11 "SOUR") $ do
             r01 "VERS"
             r01 "NAME"
             when (r01 "CORP") $ do
-                s01 llAddressStructure
+                s01 sAddressStructure
             when (r01 "DATA") $ do
                 r01 "DATE"
                 r01 "COPR"
@@ -304,53 +308,53 @@ llHeader =
         when (r01 "PLAC") $ do
             r11 "FORM"
         when (r01 "NOTE") $ do
-            r01 "CONT" -- FIXME        
+            r0m ("CONT" ++ "CONC") -- fixme
 
-llRecord :: Rec
-llRecord = --s11 llFamRecord <|>
-           s11 llIndividualRecord <|>
-           --s1m llMultimediaRecord <|>
-           --s11 llNoteRecord <|>
-           --s11 llRepositoryRecord <|>
-           --s11 llSourceRecord <|>
-           s11 llSubmitterRecord
+sRecord = s11 sFamRecord <|>
+          s11 sIndividualRecord <|>
+          s1m sMultimediaRecord <|>
+          s11 sNoteRecord <|>
+          s11 sRepositoryRecord <|>
+          s11 sSourceRecord <|>
+          s11 sSubmitterRecord
 
---llFamRecord = return True
+sFamRecord = xxx
 
-llIndividualRecord :: Rec
-llIndividualRecord =
+sIndividualRecord =
     when (r11 "INDI") $ do
         r01 "RESN"
-        s0m llPersonalNameStructure
+        s0m sPersonalNameStructure
         r01 "SEX"
-        s0m llIndividualEventStructure
-        s0m llIndividualAttributeStructure
-        s0m llLdsIndividualOrdinance
-        s0m llChildToFamilyLink
-        s0m llSpouseToFamilyLink
+        s0m sIndividualEventStructure
+        s0m sIndividualAttributeStructure
+        s0m sLdsIndividualOrdinance
+        s0m sChildToFamilyLink
+        s0m sSpouseToFamilyLink
         r0m "SUBM"
-        s0m llAssociationStructure
+        s0m sAssociationStructure
         r0m "ALIA"
         r0m "ANCI"
         r0m "DESI"
-        s0m llSourceCitation
-        s0m llMultimediaLink
-        s0m llNoteStructure
+        s0m sSourceCitation
+        s0m sMultimediaLink
+        s0m sNoteStructure
         r01 "RFN"
         r01 "AFN"
-        when (r01 "REFN") $ do -- fixme
+        when (r0m "REFN") $ do
             r01 "TYPE"
         r01 "RIN"
-        s01 llChangeDate
+        s01 sChangeDate
 
---llMultimediaRecord = return True
---llNoteRecord = return True
---llRepositoryRecord = return True
---llSourceRecord = return True
+sMultimediaRecord = xxx
 
-llSubmissionRecord :: Rec
-llSubmissionRecord =
-    when (r11 "SUBN") $ do  -- fixme, xref
+sNoteRecord = xxx
+
+sRepositoryRecord = xxx
+
+sSourceRecord = xxx
+
+sSubmissionRecord =
+    when (r11 "SUBN") $ do
         r01 "SUBM"
         r01 "FAMF"
         r01 "TEMP"
@@ -359,65 +363,61 @@ llSubmissionRecord =
         r01 "ORDI"
         r01 "RIN"
 
-llSubmitterRecord :: Rec
-llSubmitterRecord =
-    when (r11 "SUBM") $ do -- fixme xref
+sSubmitterRecord =
+    when (r11 "SUBM") $ do
         r11 "NAME"
-        s01 llAddressStructure
-        s0m llMultimediaLink
-        r01 "LANG"
+        s01 sAddressStructure
+        s0m sMultimediaLink
+        r03 "LANG"
         r01 "RFN"
         r01 "RIN"
-        s01 llChangeDate
-
-
+        s01 sChangeDate
 
 
 
 -- substructures, page 29
 
-xxx = r11 "FIXME"
-
-llAddressStructure :: Rec
-llAddressStructure = do
-    when (r11 "ADDR") $ do -- fixme
-        r01 "CONT"
+sAddressStructure = do
+    when (r01 "ADDR") $ do
+        r0m "CONT"
         r01 "ADR1"
         r01 "ADR2"
         r01 "CITY"
         r01 "STAE"
         r01 "POST"
         r01 "CTRY"
-    r01 "PHON"
+    r03 "PHON"
 
-llAssociationStructure = xxx
+sAssociationStructure = xxx
 
-llChangeDate :: Rec
-llChangeDate =
+sChangeDate =
     when (r11 "CHAN") $ do
         when (r11 "DATE") $ do
             r01 "TIME"
-        s0m llNoteStructure
+        s0m sNoteStructure
 
-llChildToFamilyLink :: Rec
-llChildToFamilyLink =
+sChildToFamilyLink =
     when (r11 "FAMC") $ do
         r0m "PEDI"
-        s0m llNoteStructure
+        s0m sNoteStructure
 
-llIndividualAttributeStructure = xxx
+sEventDetail = xxx
 
-llIndividualEventStructure :: Rec
-llIndividualEventStructure = xxx
+sFamilyEventStructure = xxx
 
-llLdsIndividualOrdinance = xxx
+sIndividualAttributeStructure = xxx
 
-llMultimediaLink = xxx
+sIndividualEventStructure = xxx
 
-llNoteStructure = xxx
+sLdsIndividualOrdinance = xxx
 
-llPersonalNameStructure :: Rec
-llPersonalNameStructure =
+sLdsSpouseSealing = xxx
+
+sMultimediaLink = xxx
+
+sNoteStructure = xxx
+
+sPersonalNameStructure =
     when (r11 "NAME") $ do
         r01 "NPFX"
         r01 "GIVN"
@@ -425,15 +425,18 @@ llPersonalNameStructure =
         r01 "SPFX"
         r01 "SURN"
         r01 "NSFX"
-        s0m llSourceCitation
-        s0m llNoteStructure
-        
-llSourceCitation = xxx
+        s0m sSourceCitation
+        s0m sNoteStructure
 
-llSpouseToFamilyLink :: Rec
-llSpouseToFamilyLink =
+sPlaceStructure = xxx
+
+sSourceCitation = xxx
+
+sSourceRepositoryCitation = xxx
+
+sSpouseToFamilyLink =
     when (r11 "FAMS") $ do
-        s0m llNoteStructure
+        s0m sNoteStructure
         
 
 
