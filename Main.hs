@@ -279,7 +279,7 @@ chk t = do
 
 
 
-xxx = r11 rWILL
+xxx = chk "FIXME"
 
 
 -- Record Structures, page 23
@@ -368,7 +368,7 @@ sIndividualRecord =
         s0m sNoteStructure
         r01 rRFN
         r01 rAFN
-        loop (r01 rREFN) $ do -- r0m
+        loop (r01 rREFN) $ do
             r01 rTYPE
         r01 rRIN
         s01 sChangeDate
@@ -498,7 +498,7 @@ sIndividualAttributeStructure =
                     rPROP <|> rRELI <|> rRESI <|> rSSN  <|>
                     rTITL
             
-sIndividualEventStructure = do
+sIndividualEventStructure =
     c1 <|> c2 <|> c3
       where
         c1 = when (r11 $ rBIRT <|> rCHR) $ do
@@ -525,7 +525,7 @@ sLdsIndividualOrdinance = xxx
 
 sLdsSpouseSealing = xxx
 
-sMultimediaLink = do
+sMultimediaLink =
     try c1 <|> try c2
       where
         c1 = when (r11 rOBJE) $ do
@@ -536,7 +536,7 @@ sMultimediaLink = do
 
         c2 = r11 rOBJE
 
-sNoteStructure = do
+sNoteStructure =
     try c1 <|> try c2
       where
         c1 = when (r11 rNOTE) $ do
@@ -566,7 +566,7 @@ sPlaceStructure =
         s0m sSourceCitation
         s0m sNoteStructure
 
-sSourceCitation = do
+sSourceCitation =
     try c1 <|> try c2
       where
         c1 = when (r11 rSOUR) $ do
@@ -575,7 +575,7 @@ sSourceCitation = do
                 r01 rROLE
             when (r01 rDATA) $ do
                 r01 rDATE
-                loop (r01 rTEXT) $ do -- r0m
+                loop (r01 rTEXT) $ do
                     r0m (rCONC <|> rCONT)
             r01 rQUAY
             s0m sMultimediaLink
@@ -583,7 +583,7 @@ sSourceCitation = do
 
         c2 = when (r11 rSOUR) $ do
             r0m (rCONC <|> rCONT)
-            loop (r01 rTEXT) $ do -- r0m
+            loop (r01 rTEXT) $ do
                 r0m (rCONC <|> rCONT)
             s0m sNoteStructure
 
