@@ -76,7 +76,7 @@ instance Show Pointer where
 -- parse a GEDCOM file into a list of GedLine objects
 gedLines :: Parser [GedLine]
 gedLines = do
-    x <- many $ gedcom_line level
+    x <- many gedcom_line
     eof
     return x
     
@@ -144,8 +144,8 @@ xxx = chk "FIXME"
 -- sequences. also, delim handlnig is slightly rearranged in
 -- gedcom_line and immediate subproductions
 
-gedcom_line :: Parser Level -> Parser GedLine
-gedcom_line level = do
+gedcom_line :: Parser GedLine
+gedcom_line = do
     p <- getPosition
     l <- level
     x <- optional_xref_id
@@ -177,15 +177,12 @@ digit = oneOf ['0'..'9']
 
 level :: Parser Level
 level = level0 <|> leveln
-
-level0 :: Parser Level
-level0 = string "0" >> return 0
-
-leveln :: Parser Level
-leveln = do
-    x <- oneOf ['1'..'9']
-    y <- many digit
-    return $ read (x:y)
+  where
+    level0 = string "0" >> return 0
+    leveln = do
+        x <- oneOf ['1'..'9']
+        y <- many digit
+        return $ read (x:y)
 
 line_item :: Parser String
 line_item = many any_char -- no support for escape sequences
