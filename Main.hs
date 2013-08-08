@@ -238,6 +238,8 @@ req = chk
 opt :: String -> Rec
 opt t = option False $ chk t
 
+optm = opt
+
 chk :: String -> Rec
 chk t = do
     n <- getState
@@ -275,12 +277,12 @@ optM b = many b >> return True
 llGedcom :: Rec
 llGedcom = do
     req1 llHeader
-    --opt1 llSubmissionRecord
-    --reqM llRecord
-    req1 llTrlr
+    opt1 llSubmissionRecord
+    reqM llRecord
+    req "TRLR"
 
 llHeader :: Rec
-llHeader = do
+llHeader =
     when (req "HEAD") $ do
         when (req "SOUR") $ do
             opt "VERS"
@@ -307,16 +309,132 @@ llHeader = do
             req "FORM"
         when (opt "NOTE") $ do
             opt "CONT" -- FIXME        
-        return True
-
-llSubmissionRecord :: Rec
-llSubmissionRecord = return True
 
 llRecord :: Rec
-llRecord = return True
+llRecord = --req1 llFamRecord <|>
+           req1 llIndividualRecord <|>
+           --reqM llMultimediaRecord <|>
+           --req1 llNoteRecord <|>
+           --req1 llRepositoryRecord <|>
+           --req1 llSourceRecord <|>
+           req1 llSubmitterRecord
 
-llTrlr :: Rec
-llTrlr = req "TRLR"
+--llFamRecord = return True
+
+llIndividualRecord :: Rec
+llIndividualRecord =
+    when (req "INDI") $ do
+        opt "RESN"
+        optM llPersonalNameStructure
+        opt "SEX"
+        optM llIndividualEventStructure
+        optM llIndividualAttributeStructure
+        optM llLdsIndividualOrdinance
+        optM llChildToFamilyLink
+        optM llSpouseToFamilyLink
+        optm "SUBM"
+        optM llAssociationStructure
+        optm "ALIA"
+        optm "ANCI"
+        optm "DESI"
+        optM llSourceCitation
+        optM llMultimediaLink
+        optM llNoteStructure
+        opt "RFN"
+        opt "AFN"
+        when (opt "REFN") $ do -- fixme
+            opt "TYPE"
+        opt "RIN"
+        opt1 llChangeDate
+
+--llMultimediaRecord = return True
+--llNoteRecord = return True
+--llRepositoryRecord = return True
+--llSourceRecord = return True
+
+llSubmissionRecord :: Rec
+llSubmissionRecord =
+    when (req "SUBN") $ do  -- fixme, xref
+        opt "SUBM"
+        opt "FAMF"
+        opt "TEMP"
+        opt "ANCE"
+        opt "DESC"
+        opt "ORDI"
+        opt "RIN"
+
+llSubmitterRecord :: Rec
+llSubmitterRecord =
+    when (req "SUBM") $ do -- fixme xref
+        req "NAME"
+        opt1 llAddressStructure
+        optM llMultimediaLink
+        opt "LANG"
+        opt "RFN"
+        opt "RIN"
+        opt1 llChangeDate
+
+
+
+
+
+
+xxx = req "FIXME"
 
 llAddressStructure :: Rec
-llAddressStructure = return True
+llAddressStructure = do
+    when (req "ADDR") $ do -- fixme
+        opt "CONT"
+        opt "ADR1"
+        opt "ADR2"
+        opt "CITY"
+        opt "STAE"
+        opt "POST"
+        opt "CTRY"
+    opt "PHON"
+
+llAssociationStructure = xxx
+
+llChangeDate :: Rec
+llChangeDate =
+    when (req "CHAN") $ do
+        when (req "DATE") $ do
+            opt "TIME"
+        optM llNoteStructure
+
+llChildToFamilyLink :: Rec
+llChildToFamilyLink =
+    when (req "FAMC") $ do
+        optm "PEDI"
+        optM llNoteStructure
+
+llIndividualAttributeStructure = xxx
+
+llIndividualEventStructure :: Rec
+llIndividualEventStructure = xxx
+
+llLdsIndividualOrdinance = xxx
+
+llMultimediaLink = xxx
+
+llNoteStructure = xxx
+
+llPersonalNameStructure :: Rec
+llPersonalNameStructure =
+    when (req "NAME") $ do
+        opt "NPFX"
+        opt "GIVN"
+        opt "NICK"
+        opt "SPFX"
+        opt "SURN"
+        opt "NSFX"
+        optM llSourceCitation
+        optM llNoteStructure
+        
+llSourceCitation = xxx
+
+llSpouseToFamilyLink :: Rec
+llSpouseToFamilyLink =
+    when (req "FAMS") $ do
+        optM llNoteStructure
+        
