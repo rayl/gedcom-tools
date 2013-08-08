@@ -264,7 +264,7 @@ when parent child = do
 
 -- execute child at next level while parent records exist
 loop :: Rec -> Rec -> Rec
-loop parent child = whileM_ parent child >> return True
+loop parent child = whileM_ (when parent child) (return True) >> return True
 
     
 chk :: String -> Rec
