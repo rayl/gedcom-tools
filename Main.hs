@@ -318,15 +318,35 @@ sHeader =
         when (r01 rNOTE) $ do
             r0m (rCONT <|> rCONC)
 
-sRecord = s11 sFamRecord <|>
-          s11 sIndividualRecord <|>
-          s1m sMultimediaRecord <|>
-          s11 sNoteRecord <|>
-          s11 sRepositoryRecord <|>
-          s11 sSourceRecord <|>
-          s11 sSubmitterRecord
+sRecord =
+    s11 sFamRecord <|>
+    s11 sIndividualRecord <|>
+    s1m sMultimediaRecord <|>
+    s11 sNoteRecord <|>
+    s11 sRepositoryRecord <|>
+    s11 sSourceRecord <|>
+    s11 sSubmitterRecord
 
-sFamRecord = xxx
+sFamRecord =
+    when (r11 rFAM) $ do
+        loop (s01 sFamilyEventStructure) $ do
+            when (r01 rHUSB) $ do
+                r11 rAGE
+            when (r01 rWIFE) $ do
+                r11 rAGE
+        r01 rHUSB
+        r01 rWIFE
+        r0m rCHIL
+        r01 rNCHI
+        r0m rSUBM
+        s0m sLdsSpouseSealing
+        s0m sSourceCitation
+        s0m sMultimediaLink
+        s0m sNoteStructure
+        loop (r01 rREFN) $ do
+            r01 rTYPE
+        r01 rRIN
+        s01 sChangeDate        
 
 sIndividualRecord =
     when (r11 rINDI) $ do
@@ -421,17 +441,20 @@ sEventDetail = do
     s0m sMultimediaLink
     s0m sNoteStructure
 
-sFamilyEventStructure = xxx
+sFamilyEventStructure =
+    when (rANUL <|> rCENS <|> rDIV  <|> rDIVF <|>
+          rENGA <|> rMARR <|> rMARB <|> rMARC <|>
+          rMARL <|> rMARS <|> rEVEN) $
+      do
+          s01 sEventDetail
 
-sIndividualAttributeStructure = do
+sIndividualAttributeStructure =
     when (rCAST <|> rDSCR <|> rEDUC <|> rIDNO <|>
           rNATI <|> rNCHI <|> rNMR  <|> rOCCU <|>
           rPROP <|> rRELI <|> rRESI <|> rSSN  <|>
           rTITL) $
       do
           s01 sEventDetail
-
-    
 
 sIndividualEventStructure = do
     c1 <|> c2 <|> c3 <|> c4 <|> c5 <|> c6 <|> c7 <|> c8 <|> c9
@@ -471,7 +494,16 @@ sLdsIndividualOrdinance = xxx
 
 sLdsSpouseSealing = xxx
 
-sMultimediaLink = xxx
+sMultimediaLink = do
+    try c1 <|> try c2
+      where
+        c1 = when (r11 rOBJE) $ do
+            r11 rFORM
+            r01 rTITL
+            r11 rFILE
+            s0m sNoteStructure
+
+        c2 = r11 rOBJE
 
 sNoteStructure = do
     try c1 <|> try c2
