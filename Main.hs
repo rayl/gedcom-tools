@@ -375,11 +375,49 @@ sIndividualRecord =
 
 sMultimediaRecord = xxx
 
-sNoteRecord = xxx
+sNoteRecord =
+    when (r11 rNOTE) $ do
+        r0m (rCONC <|> rCONT)
+        s0m sSourceCitation
+        loop (r01 rREFN) $ do
+            r01 rTYPE
+        r01 rRIN
+        s01 sChangeDate
 
-sRepositoryRecord = xxx
+sRepositoryRecord =
+    when (r11 rREPO) $ do
+        r01 rNAME
+        s01 sAddressStructure
+        s0m sNoteStructure
+        loop (r01 rREFN) $ do
+            r01 rTYPE
+        r01 rRIN
+        s01 sChangeDate
 
-sSourceRecord = xxx
+sSourceRecord =
+    when (r11 rSOUR) $ do
+        when (r01 rDATA) $ do
+            loop (r01 rEVEN) $ do
+                r01 rDATE
+                r01 rPLAC
+            r01 rAGNC
+            s0m sNoteStructure
+        when (r01 rAUTH) $ do
+            r0m (rCONT <|> rCONC)
+        when (r01 rTITL) $ do
+            r0m (rCONT <|> rCONC)
+        r01 rABBR
+        when (r01 rPUBL) $ do
+            r0m (rCONT <|> rCONC)
+        when (r01 rTEXT) $ do
+            r0m (rCONT <|> rCONC)
+        s01 sSourceRepositoryCitation
+        s0m sMultimediaLink
+        s0m sNoteStructure
+        loop (r01 rREFN) $ do
+            r01 rTYPE
+        r01 rRIN
+        s01 sChangeDate
 
 sSubmissionRecord =
     when (r11 rSUBN) $ do
@@ -557,7 +595,11 @@ sSourceCitation = do
             s0m sNoteStructure
 
             
-sSourceRepositoryCitation = xxx
+sSourceRepositoryCitation =
+    when (r11 rREPO) $ do
+        s0m sNoteStructure
+        loop (r01 rCALN) $ do
+            r01 rMEDI
 
 sSpouseToFamilyLink =
     when (r11 rFAMS) $ do
