@@ -15,11 +15,10 @@ module Main (main) where
 
 import Control.Monad.Loops (whileM_)
 import Data.Char (chr)
-import System.Environment (getArgs)
 import Text.Parsec.Char (char,oneOf,string)
 import Text.Parsec.Combinator (eof,many1,option,optional,optionMaybe)
 import Text.Parsec.Pos (SourcePos,sourceLine)
-import Text.Parsec.Prim (Parsec,runParser,(<|>),many,try,getPosition,token,getState,modifyState)
+import Text.Parsec.Prim (runParser,(<|>),many,try,getPosition,token,getState,modifyState)
 import Text.Parsec.String (Parser,GenParser,parseFromFile)
 import Text.Printf (printf)
 
@@ -27,26 +26,9 @@ import Text.Printf (printf)
 infile = "rayl2.ged"
 
 
--- | Parse infile into many GedLine objects
 main :: IO ()
-main = do
-    args <- getArgs
-    if length args > 0
-        then run gedFile infile
-        else run2 infile
+main = run2 infile
 
-
--- | Parse file f using Parser p, printing a parse error or returning
--- the result of a successful parse
-run :: Show a => Parser a -> FilePath -> IO ()
-run p f = do
-  x <- parseFromFile p f
-  case x of
-    Left e -> putStr "Parse error at " >> print e
-    Right r -> print r
-
--- | Parse file f using Parser p, printing a parse error or returning
--- the result of a successful parse
 run2 :: FilePath -> IO ()
 run2 f = do
     ls <- parseFromFile gedLines f
@@ -59,31 +41,6 @@ run2 f = do
                 Left e -> putStr "Parse error at " >> print e
                 Right r -> print r
 
-
-
--- File and Record data structure
---   Just a quick hack for pretty printing at the moment.
-
-data GedFile   = GedFile [GedRecord]
-data GedRecord = GedRecord [GedLine]
-
-instance Show GedFile where
-    show (GedFile f) = "\n" ++ (concat (map show f))
-
-instance Show GedRecord where
-    show (GedRecord l) = "\n" ++ (take 80 (repeat '-')) ++ (concat (map show l)) ++ "\n"
-
-gedFile :: Parser GedFile
-gedFile = do
-    x <- many gedRecord
-    eof
-    return $ GedFile x
-
-gedRecord :: Parser GedRecord
-gedRecord = do
-    x <- gedcom_line level0
-    y <- many $ gedcom_line leveln
-    return $ GedRecord (x:y)
 
 
 -- Data structure to hold a single line read from a GEDCOM 5.5 file
