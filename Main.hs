@@ -316,7 +316,7 @@ sHeader =
         when (r01 rPLAC) $ do
             r11 rFORM
         when (r01 rNOTE) $ do
-            r0m (rCONT <|> rCONC) -- fixme
+            r0m (rCONT <|> rCONC)
 
 sRecord = s11 sFamRecord <|>
           s11 sIndividualRecord <|>
@@ -423,7 +423,15 @@ sEventDetail = do
 
 sFamilyEventStructure = xxx
 
-sIndividualAttributeStructure = xxx
+sIndividualAttributeStructure = do
+    when (rCAST <|> rDSCR <|> rEDUC <|> rIDNO <|>
+          rNATI <|> rNCHI <|> rNMR  <|> rOCCU <|>
+          rPROP <|> rRELI <|> rRESI <|> rSSN  <|>
+          rTITL) $
+      do
+          s01 sEventDetail
+
+    
 
 sIndividualEventStructure = do
     c1 <|> c2 <|> c3 <|> c4 <|> c5 <|> c6 <|> c7 <|> c8 <|> c9
@@ -465,7 +473,15 @@ sLdsSpouseSealing = xxx
 
 sMultimediaLink = xxx
 
-sNoteStructure = xxx
+sNoteStructure = do
+    try c1 <|> try c2
+      where
+        c1 = when (r11 rNOTE) $ do
+            s0m sSourceCitation
+
+        c2 = when (r11 rNOTE) $ do
+            r0m (rCONC <|> rCONT)
+            s0m sSourceCitation
 
 sPersonalNameStructure =
     when (r11 rNAME) $ do
@@ -487,8 +503,28 @@ sPlaceStructure =
         s0m sSourceCitation
         s0m sNoteStructure
 
-sSourceCitation = xxx
+sSourceCitation = do
+    try c1 <|> try c2
+      where
+        c1 = when (r11 rSOUR) $ do
+            r01 rPAGE
+            when (r01 rEVEN) $ do
+                r01 rROLE
+            when (r01 rDATA) $ do
+                r01 rDATE
+                loop (r01 rTEXT) $ do -- r0m
+                    r0m (rCONC <|> rCONT)
+            r01 rQUAY
+            s0m sMultimediaLink
+            s0m sNoteStructure
 
+        c2 = when (r11 rSOUR) $ do
+            r0m (rCONC <|> rCONT)
+            loop (r01 rTEXT) $ do -- r0m
+                r0m (rCONC <|> rCONT)
+            s0m sNoteStructure
+
+            
 sSourceRepositoryCitation = xxx
 
 sSpouseToFamilyLink =
