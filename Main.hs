@@ -403,13 +403,55 @@ sChildToFamilyLink =
         r0m rPEDI
         s0m sNoteStructure
 
-sEventDetail = xxx
+sEventDetail = do
+    r01 rTYPE
+    r01 rDATE
+    s01 sPlaceStructure
+    s01 sAddressStructure
+    r01 rAGE
+    r01 rAGNC
+    r01 rCAUS
+    s0m sSourceCitation
+    s0m sMultimediaLink
+    s0m sNoteStructure
 
 sFamilyEventStructure = xxx
 
 sIndividualAttributeStructure = xxx
 
-sIndividualEventStructure = xxx
+sIndividualEventStructure = do
+    c1 <|> c2 <|> c3 <|> c4 <|> c5 <|> c6 <|> c7 <|> c8 <|> c9
+      where
+        c1 = when (r11 $ rBIRT <|> rCHR) $ do
+            s01 sEventDetail
+            r01 rFAMC
+
+        c2 = when (r11 $ rDEAT <|> rBURI <|> rCREM) $ do
+            s01 sEventDetail
+
+        c3 = when (r11 $ rADOP) $ do
+            s01 sEventDetail
+            when (r01 rFAMC) $ do
+                r01 rADOP
+    
+        c4 = when (r11 $ rBAPM <|> rBARM <|> rBASM <|> rBLES) $ do
+            s01 sEventDetail
+    
+        c5 = when (r11 $ rCHRA <|> rCONF <|> rFCOM <|> rORDN) $ do
+            s01 sEventDetail
+    
+        c6 = when (r11 $ rNATU <|> rEMIG <|> rIMMI) $ do
+            s01 sEventDetail
+    
+        c7 = when (r11 $ rCENS <|> rPROB <|> rWILL) $ do
+            s01 sEventDetail
+    
+        c8 = when (r11 $ rGRAD <|> rRETI) $ do
+            s01 sEventDetail
+    
+        c9 = when (r11 $ rEVEN) $ do
+            s01 sEventDetail
+
 
 sLdsIndividualOrdinance = xxx
 
@@ -430,7 +472,11 @@ sPersonalNameStructure =
         s0m sSourceCitation
         s0m sNoteStructure
 
-sPlaceStructure = xxx
+sPlaceStructure =
+    when (r11 rPLAC) $ do
+        r01 rFORM
+        s0m sSourceCitation
+        s0m sNoteStructure
 
 sSourceCitation = xxx
 
