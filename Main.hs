@@ -13,6 +13,7 @@
 
 module Main (main) where
 
+import Control.Monad.Loops (whileM_)
 import Data.Char (chr)
 import System.Environment (getArgs)
 import Text.Parsec.Char (char,oneOf,string)
@@ -258,9 +259,14 @@ when parent child = do
         modifyState $ \x -> x + 1
         y <- child
         modifyState $ \x -> x - 1
-        return y
+        return True
       else return False
 
+-- execute child at next level while parent records exist
+loop :: Rec -> Rec -> Rec
+loop parent child = whileM_ parent child >> return True
+
+    
 chk :: String -> Rec
 chk t = do
     n <- getState
@@ -342,7 +348,7 @@ sIndividualRecord =
         s0m sNoteStructure
         r01 rRFN
         r01 rAFN
-        when (r0m rREFN) $ do -- fixme, loop foreach parent
+        loop (r01 rREFN) $ do -- r0m
             r01 rTYPE
         r01 rRIN
         s01 sChangeDate
