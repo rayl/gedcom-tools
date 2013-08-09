@@ -65,40 +65,6 @@ instance Show GedToken where
     show (LVLineItem l) = l
 
 
--- record repeaters
-r01,r03,r11,r0m,r1m :: LLParser -> LLParser
-r01 b = option False b
-r03 b = r01 b >> r01 b >> r01 b
-r11 b = b
-r0m b = many  b >> return True
-r1m b = many1 b >> return True
-
-
--- structure repeaters
-s01,s11,s0m,s1m :: LLParser -> LLParser
-s01 = r01
-s11 = r11
-s0m = r0m
-s1m = r1m
-
-
-
--- execute child at next level when parent record exists
-when :: LLParser -> LLParser -> LLParser
-when parent child = do
-    x <- parent
-    if x
-      then do
-        modifyState $ \x -> x + 1
-        y <- child
-        modifyState $ \x -> x - 1
-        return True
-      else return False
-
--- execute child at next level while parent records exist
-loop :: LLParser -> LLParser -> LLParser
-loop parent child = whileM_ (when parent child) (return True) >> return True
-
     
 chk :: String -> LLParser
 chk t = do
@@ -109,11 +75,6 @@ chk t = do
             then Just True
             else Nothing
     token show pos test
-
-
-
-xxx = chk "FIXME"
-
 
 
 
@@ -236,6 +197,46 @@ xref_id = pointer >>= return . XRefId
 -----------------------------------------------------------------------------
 
 type LLParser = GenParser (SourcePos,GedToken) Int Bool
+
+
+-- record repeaters
+r01,r03,r11,r0m,r1m :: LLParser -> LLParser
+r01 b = option False b
+r03 b = r01 b >> r01 b >> r01 b
+r11 b = b
+r0m b = many  b >> return True
+r1m b = many1 b >> return True
+
+
+-- structure repeaters
+s01,s11,s0m,s1m :: LLParser -> LLParser
+s01 = r01
+s11 = r11
+s0m = r0m
+s1m = r1m
+
+
+
+-- execute child at next level when parent record exists
+when :: LLParser -> LLParser -> LLParser
+when parent child = do
+    x <- parent
+    if x
+      then do
+        modifyState $ \x -> x + 1
+        y <- child
+        modifyState $ \x -> x - 1
+        return True
+      else return False
+
+-- execute child at next level while parent records exist
+loop :: LLParser -> LLParser -> LLParser
+loop parent child = whileM_ (when parent child) (return True) >> return True
+
+
+
+xxx = chk "FIXME"
+
 
 
 -----------------------------------------------------------------------------
