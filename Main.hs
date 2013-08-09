@@ -215,26 +215,23 @@ loop parent child = whileM_ (when parent child) (return True) >> return True
 
 
 chk :: String -> LLParser
-chk t = do
+chk t = try $ do
     getState >>= lvl
     optional xrf
-    tag t
+    tag
     optional lvp
     optional lvi
     return True
-      where
+           
+  where
         foo = token (show . snd) fst
 
         lvl n = foo test
-          where test (_,(Level x)) = if x == n
-                                     then Just True
-                                     else Nothing
+          where test (_,(Level x)) = if x == n then Just True else Nothing
                 test _ = Nothing
 
-        tag t = foo test
-          where test (_,(Tag x)) = if x == t
-                                   then Just True
-                                   else Nothing
+        tag = foo test
+          where test (_,(Tag x)) = if x == t then Just True else Nothing
                 test _ = Nothing
 
         xrf = foo test
