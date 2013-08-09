@@ -16,179 +16,36 @@ module Main (main) where
 import Control.Monad.Loops (whileM_)
 import Data.Char (chr)
 import Text.Parsec.Char (char,oneOf,string)
-import Text.Parsec.Combinator (eof,many1,option,optional,optionMaybe)
-import Text.Parsec.Pos (SourcePos,sourceLine)
-import Text.Parsec.Prim (runParser,(<|>),(<?>),many,try,getPosition,token,getState,modifyState)
-import Text.Parsec.String (GenParser,parseFromFile)
+import Text.Parsec.Combinator (eof,many1,option,optionMaybe)
+import Text.Parsec.Prim (runParser,(<|>),(<?>),many,try,getState,modifyState,unexpected)
+import Text.Parsec.String (GenParser)
 import Text.Printf (printf)
 
 
+-----------------------------------------------------------------------------
 infile = "rayl2.ged"
 
-
 main :: IO ()
-main = run infile
-
-run :: FilePath -> IO ()
-run f = do
-    c <- readFile f
-    let ls = runParser gedFile () f c
-    case ls of
+main = do
+    c <- readFile infile
+    let rs = runParser gedFile 0 infile c
+    case rs of
         Left e -> putStr "Parse error at " >> print e
-        Right r -> do
-            putStrLn $ "Parsed " ++ (show . length) r ++ " tokens"
-            let rs = runParser sLineageLinkedGedcom 0 f r
-            case rs of
-                Left e -> putStr "Parse error at " >> print e
-                Right r -> print r
-
-
-
-
-
-
--- Type for high level tokens in each line of a GEDCOM file
-data GedToken = Nil
-              | Level Int
-              | XRefId String
-              | Tag String
-              | LVPtr String
-              | LVLineItem String
-              deriving (Eq)
-
-instance Show GedToken where
-    show (Nil)          = "<>"
-    show (Level x)      = show x
-    show (XRefId x)     = "[" ++ x ++ "]"
-    show (Tag x)        = x ++ ":"
-    show (LVPtr x)      = "<" ++ x ++ ">"
-    show (LVLineItem l) = l
-
-
+        Right r -> print r
 
 
 
 -----------------------------------------------------------------------------
--- Chapter 1 - Data Representation Grammar
------------------------------------------------------------------------------
-
-type DRParser a = GenParser Char () a
+type GedParser a = GenParser Char Int a
+type GedChecker = GedParser Bool
 
 
-gedFile :: DRParser [(SourcePos,GedToken)]
-gedFile = do
-    x <- many gedcom_line
-    eof
-    return $ concat x
-
-
--- Grammar Syntax, page 11
-
-gedcom_line :: DRParser [(SourcePos,GedToken)]
-gedcom_line = do
-    a1 <- f level
-    a2 <- f optional_xref_id
-    a3 <- f tag
-    a4 <- f optional_line_value
-    terminator
-    return $ filter ((Nil /=) . snd) [a1,a2,a3,a4]
-      where
-        f z = do
-            p <- getPosition
-            x <- z
-            return (p,x)
-    
-alpha :: DRParser Char
-alpha = oneOf $ concat [ ['A'..'Z'] , ['a'..'z'] , ['_']]
-
-alphanum :: DRParser Char
-alphanum = alpha <|> digit
-
-any_char :: DRParser Char
-any_char = alpha <|> digit <|> otherchar <|> char '#' <|> char ' ' <|> (char '@' >> char '@')
-           -- add Tab char, since Gramps puts out tabs in notes
-           <|> char '\t'
-
-delim :: DRParser Char
-delim = char ' '
-
-digit :: DRParser Char
-digit = oneOf ['0'..'9']
-
--- escape
--- escape_text
--- level
-
-level :: DRParser GedToken
-level = (level0 <|> leveln) >>= return . Level . read
-  where
-    level0 = string "0"
-    leveln = do
-        x <- oneOf ['1'..'9']
-        y <- many digit
-        return $ x:y
-
-line_item :: DRParser String
-line_item = many any_char -- no support for escape sequences
-
-line_value :: DRParser GedToken
-line_value = lvp <|> lvi
-  where lvp = pointer   >>= return . LVPtr
-        lvi = line_item >>= return . LVLineItem
-
-non_at :: DRParser Char
-non_at = alpha <|> digit <|> otherchar <|> char '#' <|> char ' ' 
-
--- null
-
-optional_line_value :: DRParser GedToken
-optional_line_value = option Nil $ try $ delim >> line_value
-
-optional_xref_id :: DRParser GedToken
-optional_xref_id = option Nil $ try $ delim >> xref_id
-
-otherchar :: DRParser Char
-otherchar = oneOf $ map chr $ concat
-            [ [0x21..0x22] , [0x24..0x2f] , [0x3a..0x3f]
-            , [0x5b..0x5e] , [0x60] , [0x7b..0x7e] , [0x80..0xfe]
-            ]
-
-pointer :: DRParser String
-pointer = do
-    char '@'
-    x <- alphanum
-    y <- many non_at
-    char '@'
-    return (x:y)
-
--- pointer_char
--- pointer_string
-
-tag :: DRParser GedToken
-tag = delim >> many1 alphanum >>= return . Tag
-
-terminator :: DRParser Char
-terminator = cr <|> lf <|> (cr >> lf) <|> (lf >> cr)
-  where
-    cr = char '\r'
-    lf = char '\n'
-
-xref_id :: DRParser GedToken
-xref_id = pointer >>= return . XRefId
-
-
-
-
-
------------------------------------------------------------------------------
--- Chapter 2 - Lineage Linked Grammar
------------------------------------------------------------------------------
-
-type LLParser = GenParser (SourcePos,GedToken) Int Bool
+gedFile :: GedChecker
+gedFile = sLineageLinkedGedcom >> eof >> return True
 
 
 -- repeaters
-r01,r03,r11,r0m,r1m :: LLParser -> LLParser
+r01,r03,r11,r0m,r1m :: GedChecker -> GedChecker
 r01 b = option False b
 r03 b = r01 b >> r01 b >> r01 b
 r11 b = b
@@ -196,9 +53,8 @@ r0m b = many  b >> return True
 r1m b = many1 b >> return True
 
 
-
 -- execute child at next level when parent record exists
-when :: LLParser -> LLParser -> LLParser
+when :: GedChecker -> GedChecker -> GedChecker
 when parent child = do
     x <- parent
     if x
@@ -209,49 +65,131 @@ when parent child = do
         return True
       else return False
 
+
 -- execute child at next level while parent records exist
-loop :: LLParser -> LLParser -> LLParser
+loop :: GedChecker -> GedChecker -> GedChecker
 loop parent child = whileM_ (when parent child) (return True) >> return True
 
 
-chk :: String -> LLParser
+chk :: String -> GedChecker
 chk t = try line <?> (t ++ " record")
-
   where
     line = do
-        getState >>= lvl
-        optional xrf
-        tag
-        optional lvp
-        optional lvi
+        n <- getState
+
+        l <- level
+        if l == n
+          then return ()
+          else unexpected $ "level " ++ show l ++ ", should be " ++ show n
+
+        optional_xref_id
+        
+        x <- tag
+        if x == t
+          then return ()
+          else unexpected $ "tag " ++ x ++ ", should be " ++ t
+
+        optional_line_value
+        
+        terminator
+        
         return True
-    
-    foo = token (show . snd) fst
-
-    lvl n = foo test
-      where test (_,(Level x)) = if x == n then Just True else Nothing
-            test _ = Nothing
-
-    tag = foo test
-      where test (_,(Tag x)) = if x == t then Just True else Nothing
-            test _ = Nothing
-
-    xrf = foo test
-      where test (_,(XRefId _)) = Just True
-            test _ = Nothing
-                
-    lvp = foo test
-      where test (_,(LVPtr _)) = Just True
-            test _ = Nothing
-
-    lvi = foo test
-      where test (_,(LVLineItem x)) = Just True
-            test _ = Nothing
 
 
 xxx = chk "FIXME"
 
 
+
+
+-----------------------------------------------------------------------------
+-- Chapter 1 - Data Representation Grammar
+-----------------------------------------------------------------------------
+
+-- Grammar Syntax, page 11
+
+alpha :: GedParser Char
+alpha = oneOf $ concat [ ['A'..'Z'] , ['a'..'z'] , ['_']]
+
+alphanum :: GedParser Char
+alphanum = alpha <|> digit
+
+any_char :: GedParser Char
+any_char = alpha <|> digit <|> otherchar <|> char '#' <|> char ' ' <|> (char '@' >> char '@')
+           -- add Tab char, since Gramps puts out tabs in notes
+           <|> char '\t'
+
+delim :: GedParser Char
+delim = char ' '
+
+digit :: GedParser Char
+digit = oneOf ['0'..'9']
+
+-- escape
+-- escape_text
+-- level
+
+level :: GedParser Int
+level = (level0 <|> leveln) >>= return . read
+  where
+    level0 = string "0"
+    leveln = do
+        x <- oneOf ['1'..'9']
+        y <- many digit
+        return $ x:y
+
+line_item :: GedParser String
+line_item = many any_char -- no support for escape sequences
+
+line_value :: GedParser String
+line_value = pointer <|> line_item
+
+non_at :: GedParser Char
+non_at = alpha <|> digit <|> otherchar <|> char '#' <|> char ' ' 
+
+-- null
+
+optional_line_value :: GedParser (Maybe String)
+optional_line_value = optionMaybe $ try $ delim >> line_value
+
+optional_xref_id :: GedParser (Maybe String)
+optional_xref_id = optionMaybe $ try $ delim >> xref_id
+
+otherchar :: GedParser Char
+otherchar = oneOf $ map chr $ concat
+            [ [0x21..0x22] , [0x24..0x2f] , [0x3a..0x3f]
+            , [0x5b..0x5e] , [0x60] , [0x7b..0x7e] , [0x80..0xfe]
+            ]
+
+pointer :: GedParser String
+pointer = do
+    char '@'
+    x <- alphanum
+    y <- many non_at
+    char '@'
+    return (x:y)
+
+-- pointer_char
+-- pointer_string
+
+tag :: GedParser String
+tag = delim >> many1 alphanum
+
+terminator :: GedParser Char
+terminator = cr <|> lf <|> (cr >> lf) <|> (lf >> cr)
+  where
+    cr = char '\r'
+    lf = char '\n'
+
+xref_id :: GedParser String
+xref_id = pointer
+
+
+
+
+
+-----------------------------------------------------------------------------
+-- Chapter 2 - Lineage Linked Grammar
+-----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
 -- Record Structures, page 23
