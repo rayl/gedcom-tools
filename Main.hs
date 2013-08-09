@@ -137,15 +137,16 @@ gedFile = do
 
 gedcom_line :: DRParser [(SourcePos,GedToken)]
 gedcom_line = do
-    a1 <- f =<< level
-    a2 <- f =<< optional_xref_id
-    a3 <- f =<< tag
-    a4 <- f =<< optional_line_value
+    a1 <- f level
+    a2 <- f optional_xref_id
+    a3 <- f tag
+    a4 <- f optional_line_value
     terminator
     return $ filter ((Nil /=) . snd) [a1,a2,a3,a4]
       where
-        f x = do
+        f z = do
             p <- getPosition
+            x <- z
             return (p,x)
     
 alpha :: DRParser Char
