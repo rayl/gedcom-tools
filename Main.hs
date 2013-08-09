@@ -187,21 +187,13 @@ xref_id = pointer >>= return . XRefId
 type LLParser = GenParser (SourcePos,GedToken) Int Bool
 
 
--- record repeaters
+-- repeaters
 r01,r03,r11,r0m,r1m :: LLParser -> LLParser
 r01 b = option False b
 r03 b = r01 b >> r01 b >> r01 b
 r11 b = b
 r0m b = many  b >> return True
 r1m b = many1 b >> return True
-
-
--- structure repeaters
-s01,s11,s0m,s1m :: LLParser -> LLParser
-s01 = r01
-s11 = r11
-s0m = r0m
-s1m = r1m
 
 
 
@@ -266,9 +258,9 @@ xxx = chk "FIXME"
 -- Record Structures, page 23
 
 sLineageLinkedGedcom = do
-    s11 sHeader
-    s01 sSubmissionRecord
-    s1m sRecord
+    r11 sHeader
+    r01 sSubmissionRecord
+    r1m sRecord
     r11 rTRLR
 
 sHeader =
@@ -277,7 +269,7 @@ sHeader =
             r01 rVERS
             r01 rNAME
             when (r01 rCORP) $ do
-                s01 sAddressStructure
+                r01 sAddressStructure
             when (r01 rDATA) $ do
                 r01 rDATE
                 r01 rCOPR
@@ -300,17 +292,17 @@ sHeader =
             r0m (rCONT <|> rCONC)
 
 sRecord =
-    s11 sFamRecord <|>
-    s11 sIndividualRecord <|>
-    s1m sMultimediaRecord <|>
-    s11 sNoteRecord <|>
-    s11 sRepositoryRecord <|>
-    s11 sSourceRecord <|>
-    s11 sSubmitterRecord
+    r11 sFamRecord <|>
+    r11 sIndividualRecord <|>
+    r1m sMultimediaRecord <|>
+    r11 sNoteRecord <|>
+    r11 sRepositoryRecord <|>
+    r11 sSourceRecord <|>
+    r11 sSubmitterRecord
 
 sFamRecord =
     when (r11 rFAM) $ do
-        loop (s01 sFamilyEventStructure) $ do
+        loop (r01 sFamilyEventStructure) $ do
             when (r01 rHUSB) $ do
                 r11 rAGE
             when (r01 rWIFE) $ do
@@ -320,61 +312,61 @@ sFamRecord =
         r0m rCHIL
         r01 rNCHI
         r0m rSUBM
-        s0m sLdsSpouseSealing
-        s0m sSourceCitation
-        s0m sMultimediaLink
-        s0m sNoteStructure
+        r0m sLdsSpouseSealing
+        r0m sSourceCitation
+        r0m sMultimediaLink
+        r0m sNoteStructure
         loop (r01 rREFN) $ do
             r01 rTYPE
         r01 rRIN
-        s01 sChangeDate        
+        r01 sChangeDate        
 
 sIndividualRecord =
     when (r11 rINDI) $ do
         r01 rRESN
-        s0m sPersonalNameStructure
+        r0m sPersonalNameStructure
         r01 rSEX
-        s0m sIndividualEventStructure
-        s0m sIndividualAttributeStructure
-        s0m sLdsIndividualOrdinance
-        s0m sChildToFamilyLink
-        s0m sSpouseToFamilyLink
+        r0m sIndividualEventStructure
+        r0m sIndividualAttributeStructure
+        r0m sLdsIndividualOrdinance
+        r0m sChildToFamilyLink
+        r0m sSpouseToFamilyLink
         r0m rSUBM
-        s0m sAssociationStructure
+        r0m sAssociationStructure
         r0m rALIA
         r0m rANCI
         r0m rDESI
-        s0m sSourceCitation
-        s0m sMultimediaLink
-        s0m sNoteStructure
+        r0m sSourceCitation
+        r0m sMultimediaLink
+        r0m sNoteStructure
         r01 rRFN
         r01 rAFN
         loop (r01 rREFN) $ do
             r01 rTYPE
         r01 rRIN
-        s01 sChangeDate
+        r01 sChangeDate
 
 sMultimediaRecord = xxx
 
 sNoteRecord =
     when (r11 rNOTE) $ do
         r0m (rCONC <|> rCONT)
-        s0m sSourceCitation
+        r0m sSourceCitation
         loop (r01 rREFN) $ do
             r01 rTYPE
         r01 rRIN
-        s01 sChangeDate
+        r01 sChangeDate
 
 sRepositoryRecord =
     when (r11 rREPO) $ do
         r01 rNAME
         r01 xWWW
-        s01 sAddressStructure
-        s0m sNoteStructure
+        r01 sAddressStructure
+        r0m sNoteStructure
         loop (r01 rREFN) $ do
             r01 rTYPE
         r01 rRIN
-        s01 sChangeDate
+        r01 sChangeDate
 
 sSourceRecord =
     when (r11 rSOUR) $ do
@@ -383,7 +375,7 @@ sSourceRecord =
                 r01 rDATE
                 r01 rPLAC
             r01 rAGNC
-            s0m sNoteStructure
+            r0m sNoteStructure
         when (r01 rAUTH) $ do
             r0m (rCONT <|> rCONC)
         when (r01 rTITL) $ do
@@ -393,13 +385,13 @@ sSourceRecord =
             r0m (rCONT <|> rCONC)
         when (r01 rTEXT) $ do
             r0m (rCONT <|> rCONC)
-        s01 sSourceRepositoryCitation
-        s0m sMultimediaLink
-        s0m sNoteStructure
+        r01 sSourceRepositoryCitation
+        r0m sMultimediaLink
+        r0m sNoteStructure
         loop (r01 rREFN) $ do
             r01 rTYPE
         r01 rRIN
-        s01 sChangeDate
+        r01 sChangeDate
 
 sSubmissionRecord =
     when (r11 rSUBN) $ do
@@ -414,12 +406,12 @@ sSubmissionRecord =
 sSubmitterRecord =
     when (r11 rSUBM) $ do
         r11 rNAME
-        s01 sAddressStructure
-        s0m sMultimediaLink
+        r01 sAddressStructure
+        r0m sMultimediaLink
         r03 rLANG
         r01 rRFN
         r01 rRIN
-        s01 sChangeDate
+        r01 sChangeDate
 
 
 
@@ -443,28 +435,28 @@ sChangeDate =
     when (r11 rCHAN) $ do
         when (r11 rDATE) $ do
             r01 rTIME
-        s0m sNoteStructure
+        r0m sNoteStructure
 
 sChildToFamilyLink =
     when (r11 rFAMC) $ do
         r0m rPEDI
-        s0m sNoteStructure
+        r0m sNoteStructure
 
 sEventDetail = do
     r01 rTYPE
     r01 rDATE
-    s01 sPlaceStructure
-    s01 sAddressStructure
+    r01 sPlaceStructure
+    r01 sAddressStructure
     r01 rAGE
     r01 rAGNC
     r01 rCAUS
-    s0m sSourceCitation
-    s0m sMultimediaLink
-    s0m sNoteStructure
+    r0m sSourceCitation
+    r0m sMultimediaLink
+    r0m sNoteStructure
 
 sFamilyEventStructure =
     when (r11 rList) $ do
-        s01 sEventDetail
+        r01 sEventDetail
           where
             rList = rANUL <|> rCENS <|> rDIV  <|> rDIVF <|>
                     rENGA <|> rMARR <|> rMARB <|> rMARC <|>
@@ -473,7 +465,7 @@ sFamilyEventStructure =
 
 sIndividualAttributeStructure =
     when (r11 rList) $ do
-        s01 sEventDetail
+        r01 sEventDetail
           where
             rList = rCAST <|> rDSCR <|> rEDUC <|> rIDNO <|>
                     rNATI <|> rNCHI <|> rNMR  <|> rOCCU <|>
@@ -484,16 +476,16 @@ sIndividualEventStructure =
     c1 <|> c2 <|> c3
       where
         c1 = when (r11 $ rBIRT <|> rCHR) $ do
-            s01 sEventDetail
+            r01 sEventDetail
             r01 rFAMC
 
         c2 = when (r11 $ rADOP) $ do
-            s01 sEventDetail
+            r01 sEventDetail
             when (r01 rFAMC) $ do
                 r01 rADOP
     
         c3 = when (r11 rList) $ do
-            s01 sEventDetail
+            r01 sEventDetail
               where
                 rList = rDEAT <|> rBURI <|> rCREM <|>
                         rBAPM <|> rBARM <|> rBASM <|> rBLES <|>
@@ -514,7 +506,7 @@ sMultimediaLink =
             r11 rFORM
             r01 rTITL
             r11 rFILE
-            s0m sNoteStructure
+            r0m sNoteStructure
 
         c2 = r11 rOBJE
 
@@ -522,11 +514,11 @@ sNoteStructure =
     try c1 <|> try c2
       where
         c1 = when (r11 rNOTE) $ do
-            s0m sSourceCitation
+            r0m sSourceCitation
 
         c2 = when (r11 rNOTE) $ do
             r0m (rCONC <|> rCONT)
-            s0m sSourceCitation
+            r0m sSourceCitation
 
 sPersonalNameStructure =
     when (r11 rNAME) $ do
@@ -536,8 +528,8 @@ sPersonalNameStructure =
         r01 rSPFX
         r01 rSURN
         r01 rNSFX
-        s0m sSourceCitation
-        s0m sNoteStructure
+        r0m sSourceCitation
+        r0m sNoteStructure
 
 sPlaceStructure =
     when (r11 rPLAC) $ do
@@ -545,8 +537,8 @@ sPlaceStructure =
             r01 xLATI
             r01 xLONG
         r01 rFORM
-        s0m sSourceCitation
-        s0m sNoteStructure
+        r0m sSourceCitation
+        r0m sNoteStructure
 
 sSourceCitation =
     try c1 <|> try c2
@@ -560,25 +552,25 @@ sSourceCitation =
                 loop (r01 rTEXT) $ do
                     r0m (rCONC <|> rCONT)
             r01 rQUAY
-            s0m sMultimediaLink
-            s0m sNoteStructure
+            r0m sMultimediaLink
+            r0m sNoteStructure
 
         c2 = when (r11 rSOUR) $ do
             r0m (rCONC <|> rCONT)
             loop (r01 rTEXT) $ do
                 r0m (rCONC <|> rCONT)
-            s0m sNoteStructure
+            r0m sNoteStructure
 
             
 sSourceRepositoryCitation =
     when (r11 rREPO) $ do
-        s0m sNoteStructure
+        r0m sNoteStructure
         loop (r01 rCALN) $ do
             r01 rMEDI
 
 sSpouseToFamilyLink =
     when (r11 rFAMS) $ do
-        s0m sNoteStructure
+        r0m sNoteStructure
         
 
 
