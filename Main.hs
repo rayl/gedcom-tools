@@ -18,7 +18,7 @@ import Data.Char (chr)
 import Text.Parsec.Char (char,oneOf,string)
 import Text.Parsec.Combinator (eof,many1,option,optional,optionMaybe)
 import Text.Parsec.Pos (SourcePos,sourceLine)
-import Text.Parsec.Prim (runParser,(<|>),many,try,getPosition,token,getState,modifyState)
+import Text.Parsec.Prim (runParser,(<|>),(<?>),many,try,getPosition,token,getState,modifyState)
 import Text.Parsec.String (GenParser,parseFromFile)
 import Text.Printf (printf)
 
@@ -215,36 +215,38 @@ loop parent child = whileM_ (when parent child) (return True) >> return True
 
 
 chk :: String -> LLParser
-chk t = try $ do
-    getState >>= lvl
-    optional xrf
-    tag
-    optional lvp
-    optional lvi
-    return True
-           
+chk t = try line <?> (t ++ " record")
+
   where
-        foo = token (show . snd) fst
+    line = do
+        getState >>= lvl
+        optional xrf
+        tag
+        optional lvp
+        optional lvi
+        return True
+    
+    foo = token (show . snd) fst
 
-        lvl n = foo test
-          where test (_,(Level x)) = if x == n then Just True else Nothing
-                test _ = Nothing
+    lvl n = foo test
+      where test (_,(Level x)) = if x == n then Just True else Nothing
+            test _ = Nothing
 
-        tag = foo test
-          where test (_,(Tag x)) = if x == t then Just True else Nothing
-                test _ = Nothing
+    tag = foo test
+      where test (_,(Tag x)) = if x == t then Just True else Nothing
+            test _ = Nothing
 
-        xrf = foo test
-          where test (_,(XRefId _)) = Just True
-                test _ = Nothing
+    xrf = foo test
+      where test (_,(XRefId _)) = Just True
+            test _ = Nothing
+                
+    lvp = foo test
+      where test (_,(LVPtr _)) = Just True
+            test _ = Nothing
 
-        lvp = foo test
-          where test (_,(LVPtr _)) = Just True
-                test _ = Nothing
-
-        lvi = foo test
-          where test (_,(LVLineItem x)) = Just True
-                test _ = Nothing
+    lvi = foo test
+      where test (_,(LVLineItem x)) = Just True
+            test _ = Nothing
 
 
 xxx = chk "FIXME"
