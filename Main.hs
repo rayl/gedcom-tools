@@ -70,6 +70,7 @@ instance Show LineValue where
     show (LvPtr p) = show p
     show (LvLineItem l) = l
 
+type LLParser = GenParser GedLine Level Bool
 instance Show Pointer where
     show (Pointer x) = "<" ++ x ++ ">"
 
@@ -80,11 +81,9 @@ gedLines = do
     eof
     return x
     
-type LLParser a = GenParser GedLine Level a
-type Rec = LLParser Bool
 
 -- record repeaters
-r01,r03,r11,r0m,r1m :: Rec -> Rec
+r01,r03,r11,r0m,r1m :: LLParser -> LLParser
 r01 b = option False b
 r03 b = r01 b >> r01 b >> r01 b
 r11 b = b
@@ -93,7 +92,7 @@ r1m b = many1 b >> return True
 
 
 -- structure repeaters
-s01,s11,s0m,s1m :: Rec -> Rec
+s01,s11,s0m,s1m :: LLParser -> LLParser
 s01 = r01
 s11 = r11
 s0m = r0m
@@ -102,7 +101,7 @@ s1m = r1m
 
 
 -- execute child at next level when parent record exists
-when :: Rec -> Rec -> Rec
+when :: LLParser -> LLParser -> LLParser
 when parent child = do
     x <- parent
     if x
@@ -114,11 +113,11 @@ when parent child = do
       else return False
 
 -- execute child at next level while parent records exist
-loop :: Rec -> Rec -> Rec
+loop :: LLParser -> LLParser -> LLParser
 loop parent child = whileM_ (when parent child) (return True) >> return True
 
     
-chk :: String -> Rec
+chk :: String -> LLParser
 chk t = do
     n <- getState
     let pos (GedLine x _ _ _ _) = x
