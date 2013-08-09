@@ -65,18 +65,6 @@ instance Show GedToken where
     show (LVLineItem l) = l
 
 
-    
-chk :: String -> LLParser
-chk t = do
-    n <- getState
-    let pos (GedLine x _ _ _ _) = x
-        test (GedLine _ l _ (Tag a) _) =
-            if l == n && a == t
-            then Just True
-            else Nothing
-    token show pos test
-
-
 
 
 
@@ -233,6 +221,41 @@ when parent child = do
 loop :: LLParser -> LLParser -> LLParser
 loop parent child = whileM_ (when parent child) (return True) >> return True
 
+
+chk :: String -> LLParser
+chk t = do
+    getState >>= lvl
+    optional xrf
+    tag t
+    optional lvp
+    optional lvi
+    return True
+      where
+        foo = token (show . snd) fst
+
+        lvl n = foo test
+          where test (_,(Level x)) = if x == n
+                                     then Just True
+                                     else Nothing
+                test _ = Nothing
+
+        tag t = foo test
+          where test (_,(Tag x)) = if x == t
+                                   then Just True
+                                   else Nothing
+                test _ = Nothing
+
+        xrf = foo test
+          where test (_,(XRefId _)) = Just True
+                test _ = Nothing
+
+        lvp = foo test
+          where test (_,(LVPtr _)) = Just True
+                test _ = Nothing
+
+        lvi = foo test
+          where test (_,(LVLineItem x)) = Just True
+                test _ = Nothing
 
 
 xxx = chk "FIXME"
