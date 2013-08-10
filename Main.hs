@@ -67,8 +67,8 @@ when parent child = do
 
 
 -- execute child at next level while parent records exist
-loop :: GedChecker -> GedChecker -> GedChecker
-loop parent child = whileM_ (when parent child) (return True) >> return True
+each :: GedChecker -> GedChecker -> GedChecker
+each parent child = whileM_ (when parent child) (return True) >> return True
 
 
 chk :: String -> GedChecker
@@ -239,7 +239,7 @@ sRecord =
 
 sFamRecord =
     when (n11 rFAM) $ do
-        loop (n01 sFamilyEventStructure) $ do
+        each (n01 sFamilyEventStructure) $ do
             when (n01 rHUSB) $ do
                 n11 rAGE
             when (n01 rWIFE) $ do
@@ -253,7 +253,7 @@ sFamRecord =
         n0m sSourceCitation
         n0m sMultimediaLink
         n0m sNoteStructure
-        loop (n01 rREFN) $ do
+        each (n01 rREFN) $ do
             n01 rTYPE
         n01 rRIN
         n01 sChangeDate        
@@ -278,7 +278,7 @@ sIndividualRecord =
         n0m sNoteStructure
         n01 rRFN
         n01 rAFN
-        loop (n01 rREFN) $ do
+        each (n01 rREFN) $ do
             n01 rTYPE
         n01 rRIN
         n01 sChangeDate
@@ -289,7 +289,7 @@ sNoteRecord =
     when (n11 rNOTE) $ do
         n0m (rCONC <|> rCONT)
         n0m sSourceCitation
-        loop (n01 rREFN) $ do
+        each (n01 rREFN) $ do
             n01 rTYPE
         n01 rRIN
         n01 sChangeDate
@@ -300,7 +300,7 @@ sRepositoryRecord =
         n01 xWWW
         n01 sAddressStructure
         n0m sNoteStructure
-        loop (n01 rREFN) $ do
+        each (n01 rREFN) $ do
             n01 rTYPE
         n01 rRIN
         n01 sChangeDate
@@ -308,7 +308,7 @@ sRepositoryRecord =
 sSourceRecord =
     when (n11 rSOUR) $ do
         when (n01 rDATA) $ do
-            loop (n01 rEVEN) $ do
+            each (n01 rEVEN) $ do
                 n01 rDATE
                 n01 rPLAC
             n01 rAGNC
@@ -325,7 +325,7 @@ sSourceRecord =
         n01 sSourceRepositoryCitation
         n0m sMultimediaLink
         n0m sNoteStructure
-        loop (n01 rREFN) $ do
+        each (n01 rREFN) $ do
             n01 rTYPE
         n01 rRIN
         n01 sChangeDate
@@ -486,7 +486,7 @@ sSourceCitation =
                 n01 rROLE
             when (n01 rDATA) $ do
                 n01 rDATE
-                loop (n01 rTEXT) $ do
+                each (n01 rTEXT) $ do
                     n0m (rCONC <|> rCONT)
             n01 rQUAY
             n0m sMultimediaLink
@@ -494,7 +494,7 @@ sSourceCitation =
 
         c2 = when (n11 rSOUR) $ do
             n0m (rCONC <|> rCONT)
-            loop (n01 rTEXT) $ do
+            each (n01 rTEXT) $ do
                 n0m (rCONC <|> rCONT)
             n0m sNoteStructure
 
@@ -502,7 +502,7 @@ sSourceCitation =
 sSourceRepositoryCitation =
     when (n11 rREPO) $ do
         n0m sNoteStructure
-        loop (n01 rCALN) $ do
+        each (n01 rCALN) $ do
             n01 rMEDI
 
 sSpouseToFamilyLink =
