@@ -1,1 +1,18 @@
-A set of tools to parse and manipulate GEDCOM files.
+A set of tools to parse and manipulate GEDCOM 5.5 files.
+
+Actually, this is just a vehicle to explore Parsec.  For now, it's a
+simple, semi-complete validator. It purports to read in a GEDCOM 5.5
+file and check that the levels and tags form a valid record
+structure. Cross refs and detailed line values are not really examined
+at the moment.
+
+Link to GEDCOM 5.5 specification:
+   https://devnet.familysearch.org/docs/gedcom/gedcom55.pdf
+
+One big problem is that the record bodies are monads.  the do-notation
+allows the structure parsers to almost mirror the indented syntax
+definitions in the spec document, which is very nice.  However, it
+also imposes an ordering on sub-records, while the spec states that
+ordering is not important between different tags at the same level.
+Not sure if there's a way to relax the ordering while keeping the nice
+indenting structure...
