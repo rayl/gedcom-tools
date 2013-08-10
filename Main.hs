@@ -13,7 +13,7 @@
 
 module Main (main) where
 
-import Control.Monad.Loops (whileM_)
+import Control.Monad.Loops (iterateUntil)
 import Data.Char (chr)
 import Text.Parsec.Char (char,oneOf,string)
 import Text.Parsec.Combinator (eof,many1,option,optionMaybe)
@@ -68,7 +68,7 @@ when parent child = do
 
 -- execute child at next level while parent records exist
 each :: GedChecker -> GedChecker -> GedChecker
-each parent child = whileM_ (when parent child) (return True) >> return True
+each parent child = iterateUntil not (when parent child)
 
 
 chk :: String -> GedChecker
